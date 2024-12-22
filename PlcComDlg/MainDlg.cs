@@ -19,12 +19,10 @@ using System.Windows.Forms;
 using System.Windows.Forms.Design;
 using System.Xml.Serialization;
 
-using ActUtlTypeLib;
-
 namespace PlcComDlg
 {
     /// <summary>
-    /// SMA-PLC 통신 프로그램
+    /// 1000.주 프로그램
     /// </summary>
     public partial class MainDlg : Form
     {
@@ -74,23 +72,6 @@ namespace PlcComDlg
             /// </summary>
             Measurement,
         }
- 
-
-        /// <summary>
-        /// 통신 컨트롤
-        /// </summary>
-        public class ComCtrl
-        {
-            /// <summary>
-            /// PLC 통신
-            /// </summary>
-            public ActUtlType Aut = null;
-
-            /// <summary>
-            /// TCP client 소켓
-            /// </summary>
-            public Socket Sock = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-        }
         #endregion
 
         #region 변수 선언
@@ -122,7 +103,7 @@ namespace PlcComDlg
         /// <summary>
         /// TCP 동작 모드
         /// </summary>
-        private TcpOpModes _tcpModeRef = TcpOpModes.Non;
+        private TcpOpModes _tcpModeRef { get; set; } = TcpOpModes.Non;
 
         /// <summary>
         /// 통신 설정
@@ -144,27 +125,30 @@ namespace PlcComDlg
         /// </summary>
         private ConcurrentQueue<TcpData.ComMsg> _tcpMsgQue = new ConcurrentQueue<TcpData.ComMsg>();
 
+        /// <summary>
+        /// 로그 메시지를 저장하는 que
+        /// </summary>
         private ConcurrentQueue<LogMsg> _logQue = new ConcurrentQueue<LogMsg>();
 
         /// <summary>
         /// TCP에 측정을 요청한다
         /// </summary>
-        private bool _plcToTcpMeasReq = false;
+        private bool _plcToTcpMeasReq { get; set; } = false;
 
         /// <summary>
         /// PLC에 측정을 완료한다
         /// </summary>
-        private bool _tcpToPlcMeasFin = false;
+        private bool _tcpToPlcMeasFin { get; set; } = false;
 
         /// <summary>
         /// TCP 측정 에러 플래그
         /// </summary>
-        private bool _tcpMeasErrFlag = false;
+        private bool _tcpMeasErrFlag { get; set; } = false;
 
         /// <summary>
         /// TCP 측정 에러 메시지
         /// </summary>
-        private string _tcpMeasErrMsg = "";
+        private string _tcpMeasErrMsg { get; set; } = "";
 
         /// <summary>
         /// 프로그램을 종료하는 플래그
@@ -172,7 +156,7 @@ namespace PlcComDlg
         private bool _closeApp { get; set; } = false;
         #endregion
 
-        #region 이벤트.초기화
+        #region 11000.이벤트.초기화
         /// <summary>
         /// 폼 초기화
         /// </summary>
@@ -182,13 +166,13 @@ namespace PlcComDlg
         }
 
         /// <summary>
-        /// 1XXX: 폼 로드
+        /// 1000: 폼 로드
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
         private void MainDlg_Load(object sender, EventArgs e)
         {
-            // 1001: 중복실행 방지
+            // 중복실행 방지
             string currProcess = Process.GetCurrentProcess().ProcessName.ToUpper();
             Process[] pcs = Process.GetProcessesByName(currProcess);
             if (pcs.Length > 1)
@@ -230,10 +214,10 @@ namespace PlcComDlg
                 TsslLoadLog.BackColor = Color.Lime;
             }
 
-            // 1003: 설정 로드
+            // 설정 로드
             if (File.Exists(ComSettings.FilePath))
             {
-                if (LoadSettings())
+                if (LoadSettings(out string errMsg))
                 {
                     TsslLoadSettings.BackColor = Color.Lime;
                 }
@@ -246,20 +230,23 @@ namespace PlcComDlg
             {
                 _cs = new ComSettings();
                 _cs.DbColumns.AddRange(new string[] { "SPM A MAX", "SPM A MIN", "SPM A AVR", "SPM A RNG", "SPM A STD", "SPM Zd MAX", "SPM Zd MIN", "SPM Zd AVR", "SPM Zd STD", "SPM Zd RNG", "pass", "failed_id" });
-                SaveComSettings(_cs, ComSettings.FilePath);
-                InsertLog("Create settings file", 1003);
+                if (!SaveComSettings(_cs, ComSettings.FilePath, out string errMsg))
+                {
+                    InsertLog("Fail to create settings file", LogMsg.Sources.APP, 11000, errMsg);
+                }
+                
                 TsslLoadSettings.BackColor = Color.Yellow;
             }
             PpgSettings.SelectedObject = _cs;
 
             TmrSmaCheck.Enabled = true;
-             
-            InsertLog("** PLC COM Application start **");
 
-            // 1004: 프로그램 자동 시작
+            InsertLog("Application start", LogMsg.Sources.APP);
+
+            // 옵션: 프로그램 자동 시작
             if (_cs.AutoStart)
             {
-                InsertLog("Auto start");
+                InsertLog("Option-Auto start", LogMsg.Sources.APP);
                 StartPlcWorker();
                 StartTcpWorker();
             }
@@ -272,7 +259,7 @@ namespace PlcComDlg
         /// <param name="e"></param>
         private void MainDlg_FormClosing(object sender, FormClosingEventArgs e)
         {
-//            Properties.Settings.Default.DlgPosition = Location;
+            //            Properties.Settings.Default.DlgPosition = Location;
             Properties.Settings.Default.Save();
 
             if (_workerPlc.IsBusy)
@@ -293,8 +280,7 @@ namespace PlcComDlg
         }
         #endregion
 
-        #region 이벤트.설정
-
+        #region 12000.이벤트.설정
         /// <summary>
         /// 설정 다시 로드
         /// </summary>
@@ -302,12 +288,13 @@ namespace PlcComDlg
         /// <param name="e"></param>
         private void BtnReload_Click(object sender, EventArgs e)
         {
-            if (LoadSettings())
+            if (LoadSettings(out string errMsg))
             {
                 TsslLoadSettings.BackColor = Color.Lime;
             }
             else
             {
+                InsertLog("Fail to load settings", LogMsg.Sources.APP, 12000, errMsg);
                 TsslLoadSettings.BackColor = Color.Orange;
             }
             PpgSettings.SelectedObject = _cs;
@@ -320,8 +307,14 @@ namespace PlcComDlg
         /// <param name="e"></param>
         private void BtnSave_Click(object sender, EventArgs e)
         {
-            SaveComSettings(_cs, ComSettings.FilePath);
-            MessageBox.Show("설정이 저장되었습니다");
+            if (SaveComSettings(_cs, ComSettings.FilePath, out string errMsg))
+            {
+                InsertLog("Save settings", LogMsg.Sources.APP);
+            }
+            else
+            {
+                InsertLog("Fail to save settings", LogMsg.Sources.APP, 12000, errMsg);
+            }
         }
 
         /// <summary>
@@ -365,7 +358,7 @@ namespace PlcComDlg
         }
         #endregion
 
-        #region 이벤트.타이머
+        #region 13000.이벤트.타이머
         /// <summary>
         /// 타이머 이벤트
         /// </summary>
@@ -383,23 +376,99 @@ namespace PlcComDlg
                 LblSmaApp.BackColor = DefaultBackColor;
             }
 
+            // PLC 업데이트
+            if (_plcGuiUpdateQue.TryDequeue(out PlcGuiEvents res))
+            {
+                if (res == PlcGuiEvents.MesUpload)
+                {
+                    LvwDb.Items.Clear();
+                    for (int i = 0; i < _plcData.DbMesVals.Count; i++)
+                    {
+                        ListViewItem lvi = new ListViewItem(new string[]
+                        {
+                            _plcData.DbMesVals[i].Name,
+                            _plcData.DbMesVals[i].MeasValue.ToString("f3"),
+                            $"{i * 2}",
+                            _plcData.DbMesVals[i].MesValue.ToString("n0")
+                        });
+                        LvwDb.Items.Add(lvi);
+                    }
+                    LblMesOkVal.Text = _plcData.DbPass > 0 ? "OK" : "NG";
+                    LblMesOkVal.BackColor = _plcData.DbPass > 0 ? Color.Lime : DefaultBackColor;
+                    LblDbIdVal.Text = $"{_plcData.DbId}";
+                    LblFailedIdVal.Text = $"{ _plcData.DbFailedId}";
+                }
+                else if (res == PlcGuiEvents.ReadModelNumber)
+                {
+                    LblModelNumVal.Text = $"{_plcData.PlcModelNumber}";
+                }
+                else if (res == PlcGuiEvents.ReadProductInfor)
+                {
+                    List<ListViewItem> pis = new List<ListViewItem>();
+                    if (_plcData.ProductInforVals.Count != _cs.ProductInfors.Count)
+                    {
+                        return;
+                    }
+
+                    for (int i = 0; i < _cs.ProductInfors.Count; i++)
+                    {
+                        ListViewItem lvItem = new ListViewItem(_cs.ProductInfors[i].Name);
+
+                        // 문자 읽기
+                        if (_cs.ProductInfors[i].DataType == ComSettings.ProductInfor.DataTypes.Text)
+                        {
+                            lvItem.SubItems.Add($"{_cs.ProductInfors[i].DataStartAddress}({_cs.ProductInfors[i].DataLength})");
+                        }
+                        // 정수 값 읽기
+                        else if (_cs.ProductInfors[i].DataType == ComSettings.ProductInfor.DataTypes.Word)
+                        {
+                            lvItem.SubItems.Add($"{_cs.ProductInfors[i].DataStartAddress}");
+                        }
+                        // 더블워드 정수값
+                        else if (_cs.ProductInfors[i].DataType == ComSettings.ProductInfor.DataTypes.DWord)
+                        {
+                            lvItem.SubItems.Add($"{_cs.ProductInfors[i].DataStartAddress}");
+                        }
+                        else
+                        {
+                            continue;
+                        }
+                        lvItem.SubItems.Add(_plcData.ProductInforVals[i].ToString());
+                        pis.Add(lvItem);
+                    }
+                    LvwProInfor.Items.Clear();
+                    LvwProInfor.Items.AddRange(pis.ToArray());
+                }
+            }
+
+            // 로그 업데이트
             if (_logQue.TryDequeue(out LogMsg log))
             {
-                // 로그 출력
+                // 로그 줄 수 제한 기능
                 if (TbxLog.Lines.Length > _cs.LogMaximumLine)
                 {
                     TbxLog.Lines = TbxLog.Lines.Skip(TbxLog.Lines.Length - _cs.LogMaximumLine).ToArray();
                 }
 
-                string logMessage;
-                logMessage = log.EventTime.ToString("yy/MM/dd HH:mm:ss) ");
+                // 로그 출력
+                string logMessage = $"{log.EventTime.ToString("yy/MM/dd HH:mm:ss")} {log.LogSource.ToString()}) {log.Message}\r\n";
+                TbxLog.AppendText(logMessage);
                 if (log.ErrCode > 0)
                 {
-                    logMessage += $"({log.ErrCode})";
-                }
-                logMessage += log.Message + Environment.NewLine;
+                    logMessage = $"\t({log.ErrCode}) {log.ErrMsg}\r\n";
+                    TbxLog.AppendText(logMessage);
+                    if (log.LogSource == LogMsg.Sources.PLC)
+                    {
+                        LblPlcAlmCode.Text = $"{log.ErrCode}";
+                        LblPlcAlmCode.BackColor = Color.OrangeRed;
 
-                TbxLog.AppendText(logMessage);
+                    }
+                    else if (log.LogSource == LogMsg.Sources.TCP)
+                    {
+                        LblTcpAlmCode.Text = $"{log.ErrCode}";
+                        LblTcpAlmCode.BackColor = Color.OrangeRed;
+                    }
+                }
 
                 // DB 삽입
                 try
@@ -423,6 +492,7 @@ namespace PlcComDlg
                 }
             }
 
+            // 프로그램 종료
             if (_closeApp)
             {
                 if (_workerPlc.IsBusy)
@@ -443,10 +513,9 @@ namespace PlcComDlg
                 Close();
             }
         }
-
         #endregion
 
-        #region 이벤트.TCP
+        #region 14000.이벤트.TCP
         /// <summary>
         /// TCP Worker 시작
         /// </summary>
@@ -457,12 +526,12 @@ namespace PlcComDlg
             if (_tcpModeRef == TcpOpModes.Non)
             {
                 StartTcpWorker();
-                InsertLog("TCP manual start");
+                InsertLog("TCP manual start", LogMsg.Sources.APP);
             }
             else
             {
                 _workerTcp.CancelAsync();
-                InsertLog("TCP manual stop");
+                InsertLog("TCP manual stop", LogMsg.Sources.APP);
             }
         }
         /// <summary>
@@ -532,23 +601,23 @@ namespace PlcComDlg
         /// <param name="e"></param>
         private void BtnTcpSetBarcode_Click(object sender, EventArgs e)
         {
-            if (_tcpModeRef == TcpOpModes.Connected)
-            {
-                if (!GetProductInforMsg(_plcData, _cs, out string[] tcpMsgs))
-                {
-                    for (int i = 0; i < tcpMsgs.Length; i++)
-                    {
-                        TcpData.ComMsg msg = new TcpData.ComMsg();
-                        msg.Message = tcpMsgs[i];
-                        _tcpMsgQue.Enqueue(msg);
-                    }
-                }
-            }
+            
         }
 
+        /// <summary>
+        /// 알람 초기화
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void LblTcpAlmCode_Click(object sender, EventArgs e)
+        {
+            Label s = (Label)sender;
+            s.BackColor = DefaultBackColor;
+            s.Text = "TCP ALARM";
+        }
         #endregion
 
-        #region 이벤트.PLC
+        #region 15000.이벤트.PLC
         /// <summary>
         /// PLC worker 시작
         /// </summary>
@@ -559,12 +628,12 @@ namespace PlcComDlg
             if (_plcModeRef == PlcOpModes.Non)
             {
                 StartPlcWorker();
-                InsertLog("PLC manual start");
+                InsertLog("PLC manual start", LogMsg.Sources.APP);
             }
             else
             {
                 _workerPlc.CancelAsync();
-                InsertLog("PLC manual stop");
+                InsertLog("PLC manual stop", LogMsg.Sources.APP);
             }
         }
 
@@ -575,7 +644,7 @@ namespace PlcComDlg
         /// <param name="e"></param>
         private void BtnCpyBarcode_Click(object sender, EventArgs e)
         {
-            
+
         }
 
         /// <summary>
@@ -700,16 +769,43 @@ namespace PlcComDlg
                 _plcMsgQue.Enqueue(msg);
             }
         }
+
+        /// <summary>
+        /// MES 데이터를 업로드 한다
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void BtnMesDataUpload_Click(object sender, EventArgs e)
+        {
+            if (_workerPlc.IsBusy)
+            {
+                PlcData.ComMsg msg = new PlcData.ComMsg();
+                msg.MsgType = PlcData.ComMsg.MsgTypes.UploadMesData;
+                _plcMsgQue.Enqueue(msg);
+            }
+        }
+
+        /// <summary>
+        /// 알람 초기화
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void LblPlcAlmCode_Click(object sender, EventArgs e)
+        {
+            Label s = (Label)sender;
+            s.BackColor = DefaultBackColor;
+            s.Text = "PLC ALARM";
+        }
         #endregion
 
-        #region 메소드
+        #region 16000.메소드
         /// <summary>
         /// 설정을 저장한다
         /// </summary>
         /// <param name="cs"></param>
         /// <param name="path"></param>
         /// <returns></returns>
-        private static bool SaveComSettings(ComSettings cs, string path)
+        private static bool SaveComSettings(ComSettings cs, string path, out string errMsg)
         {
             try
             {
@@ -719,10 +815,12 @@ namespace PlcComDlg
                     ser.Serialize(writer, cs);
                     writer.Close();
                 }
+                errMsg = "";
                 return true;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                errMsg = ex.Message;
                 return false;
             }
         }
@@ -730,7 +828,7 @@ namespace PlcComDlg
         /// <summary>
         /// 설정을 로드한다
         /// </summary>
-        private bool LoadSettings()
+        private bool LoadSettings(out string errMsg)
         {
             bool res;
             FileStream fs = null;
@@ -740,13 +838,14 @@ namespace PlcComDlg
                 fs = new FileStream(ComSettings.FilePath, FileMode.Open);
                 System.Xml.XmlReader reader = System.Xml.XmlReader.Create(fs);
                 _cs = (ComSettings)serializer.Deserialize(reader);
+                errMsg = "";
                 res = true;
             }
             catch (Exception ex)
             {
                 _cs = new ComSettings();
                 _cs.DbColumns.AddRange(new string[] { "SPM A MAX", "SPM A MIN", "SPM A AVR", "SPM A RNG", "SPM A STD", "SPM Zd MAX", "SPM Zd MIN", "SPM Zd AVR", "SPM Zd STD", "SPM Zd RNG", "pass", "failed_id" });
-                InsertLog("Fail to load settings: " + ex.Message, 1001);
+                errMsg = ex.Message;
                 res = false;
             }
             finally
@@ -763,18 +862,24 @@ namespace PlcComDlg
         /// 로그를 삽입한다
         /// </summary>
         /// <param name="message"></param>
+        /// <param name="lsource"></param>
         /// <param name="code"></param>
-        private bool InsertLog(string message, int code = 0)
+        /// <param name="errMsg"></param>
+        /// <returns></returns>
+        private bool InsertLog(string message, LogMsg.Sources lsource, int code = 0, string errMsg = "")
         {
             LogMsg msg = new LogMsg();
 
             msg.Message = message;
             msg.ErrCode = code;
+            msg.ErrMsg = errMsg;
             msg.EventTime = DateTime.Now;
+            msg.LogSource = lsource;
             _logQue.Enqueue(msg);
             return true;
         }
         #endregion
+
 
     }
 }

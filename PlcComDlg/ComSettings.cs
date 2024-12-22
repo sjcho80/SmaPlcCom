@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms.Design;
 
-using McProtocol.Mitsubishi;
+using SmaPlc;
 
 namespace PlcComDlg
 {
@@ -20,20 +20,21 @@ namespace PlcComDlg
     {
         #region PLC.Connection
         /// <summary>
-        /// PLC 스테이션 넘버
+        /// PLC 타입
         /// </summary>
         [Category("PLC.Connection")]
-        [DisplayName("\tIp address")]
-        [Description("Plc station number")]
-        public string PlcIp { get; set; } = "100.100.101.42";
+        [DisplayName("\tPlc type")]
+        [Description("Plc type")]
+        public PlcBase.PlcTypes PlcType { get; set; } = PlcBase.PlcTypes.SimensS7;
 
         /// <summary>
-        /// PLC 스테이션 넘버
+        /// PLC 연결 파라미터
         /// </summary>
         [Category("PLC.Connection")]
-        [DisplayName("\tPort number")]
-        [Description("Plc station number")]
-        public int PlcPort { get; set; } = 12402;
+        [DisplayName("\tPlc connection parameters")]
+        [Description("Plc connection parameters\r\n" +
+            "Type 'help' or clear to print helps corresponding plc type")]
+        public string PlcConnectionParam { get; set; } = "100.100.101.42, 12042, 0, 0";
         #endregion
 
         #region PLC.Address.Flag
@@ -84,7 +85,6 @@ namespace PlcComDlg
         [DisplayName("Ng")]
         [Description("NG bit address")]
         public string PlcAddNgBit { get; set; } = "D10300.4";
-
 
         /// <summary>
         /// BUSY 비트
@@ -191,15 +191,6 @@ namespace PlcComDlg
         [DisplayName("MES start address")]
         [Description("MES start address")]
         public string PlcMesStartAddress { get; set; } = "";
-
-        /// <summary>
-        /// MES 스텝 사이즈
-        /// </summary>
-        [Category("PLC.Address.MES")]
-        [DisplayName("MES datum size")]
-        [Description("MES datum step up size. Set 4 if D1000, D1003, D1007, ...")]
-        public int PlcMesDatumSize { get; set; } = 4;
-
         #endregion
 
         #region PLC.Control

@@ -5,8 +5,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-using McProtocol.Mitsubishi;
-
 namespace PlcComDlg
 {
     /// <summary>
@@ -92,6 +90,10 @@ namespace PlcComDlg
                 /// 측정 요청 비트를 토글한다
                 /// </summary>
                 ToggleMeasReq,
+                /// <summary>
+                /// MES 데이터를 업로드 한다
+                /// </summary>
+                UploadMesData,
             }
 
             /// <summary>

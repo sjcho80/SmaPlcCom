@@ -29,6 +29,11 @@ namespace PlcComDlg
         public byte[] WriteBuf { get; set; }
 
         /// <summary>
+        /// 마지막 통신 메시지
+        /// </summary>
+        public string LastComMsg { get; set; } = "";
+
+        /// <summary>
         /// TCP read buffer
         /// </summary>
         public byte[] ReadBuf { get; set; } = new byte[1024];
@@ -41,7 +46,7 @@ namespace PlcComDlg
         /// <summary>
         /// TCP 통신 마지막 에러 메시지
         /// </summary>
-        public string ComLastErrMsg { get; set; } = "";
+        public string LastErrMsg { get; set; } = "";
 
         /// <summary>
         /// TCP 마지막 통신시간

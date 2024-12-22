@@ -36,15 +36,6 @@
     <ApplicationIcon>PlcMonitor.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="ActUtlTypeLib, Version=1.0.0.0, Culture=neutral, PublicKeyToken=627cb188e78f967a, processorArchitecture=MSIL">
-      <EmbedInteropTypes>True</EmbedInteropTypes>
-    </Reference>
-    <Reference Include="McProtocol, Version=2.1.6.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\PMcProtocol.2.1.6\lib\net45\McProtocol.dll</HintPath>
-    </Reference>
-    <Reference Include="S7.Net, Version=0.20.0.0, Culture=neutral, PublicKeyToken=d5812d469e84c693, processorArchitecture=MSIL">
-      <HintPath>..\packages\S7netplus.0.20.0\lib\net452\S7.Net.dll</HintPath>
-    </Reference>
     <Reference Include="SQLite.Designer">
       <HintPath>..\..\SQLite\sqlite-netFx451-static-binary-Win32-2013-1.0.118.0\SQLite.Designer.dll</HintPath>
     </Reference>
@@ -138,13 +129,13 @@
     <Content Include="PlcMonitor.ico" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\PlcCom\PlcCom.csproj">
-      <Project>{f5c20c4f-93a1-4be2-9bad-3f7fcbe25fde}</Project>
-      <Name>PlcCom</Name>
-    </ProjectReference>
+    <WCFMetadata Include="Connected Services\" />
   </ItemGroup>
   <ItemGroup>
-    <WCFMetadata Include="Connected Services\" />
+    <ProjectReference Include="..\SmaPlc\SmaPlc.csproj">
+      <Project>{dc9a787b-6715-427f-a142-42b48e4cab6e}</Project>
+      <Name>SmaPlc</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>

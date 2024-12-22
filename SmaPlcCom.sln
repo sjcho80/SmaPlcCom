@@ -5,7 +5,7 @@ VisualStudioVersion = 15.0.28307.2017
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PlcComDlg", "PlcComDlg\PlcComDlg.csproj", "{ABF6604E-A429-418C-B202-25C041F99F5F}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PlcCom", "PlcCom\PlcCom.csproj", "{F5C20C4F-93A1-4BE2-9BAD-3F7FCBE25FDE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmaPlc", "SmaPlc\SmaPlc.csproj", "{DC9A787B-6715-427F-A142-42B48E4CAB6E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,10 +17,10 @@ Global
 		{ABF6604E-A429-418C-B202-25C041F99F5F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{ABF6604E-A429-418C-B202-25C041F99F5F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{ABF6604E-A429-418C-B202-25C041F99F5F}.Release|Any CPU.Build.0 = Release|Any CPU
-		{F5C20C4F-93A1-4BE2-9BAD-3F7FCBE25FDE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{F5C20C4F-93A1-4BE2-9BAD-3F7FCBE25FDE}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{F5C20C4F-93A1-4BE2-9BAD-3F7FCBE25FDE}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{F5C20C4F-93A1-4BE2-9BAD-3F7FCBE25FDE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DC9A787B-6715-427F-A142-42B48E4CAB6E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DC9A787B-6715-427F-A142-42B48E4CAB6E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DC9A787B-6715-427F-A142-42B48E4CAB6E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DC9A787B-6715-427F-A142-42B48E4CAB6E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -19,16 +19,14 @@ using System.Windows.Forms;
 using System.Windows.Forms.Design;
 using System.Xml.Serialization;
 
-using ActUtlTypeLib;
-
 namespace PlcComDlg
 {
     /// <summary>
-    /// SMA-PLC 통신 프로그램
+    /// 3000.SMA-PLC 통신 프로그램
     /// </summary>
     public partial class MainDlg : Form
     {
-        #region TCP Worker 제어
+        #region 31000.Tcp.Worker
         /// <summary>
         /// TCP 제어 워커
         /// </summary>
@@ -50,7 +48,7 @@ namespace PlcComDlg
                 }
                 _tcpModeRef = tcpMode;
 
-                // 3100: TCP 연결 시도
+                // 31100: TCP 연결 시도
                 if (tcpMode == TcpOpModes.Connecting)
                 {
                     if (!sock.Connected)
@@ -78,39 +76,36 @@ namespace PlcComDlg
                     if (sock.Connected)
                     {
                         tcpMode = TcpOpModes.Connected;
-                        InsertLog("TCP: Connected");
+                        InsertLog("Connected", LogMsg.Sources.TCP);
                     }
                     else
                     {
                         Thread.Sleep(_cs.TcpConnWaitTimeMilSec);
                     }
                 }
-                // 32XX: TCP 모니터
+                // 31200: TCP 모니터
                 else if (tcpMode == TcpOpModes.Connected)
                 {
-                    // 3200: TCP 연결상태 체크
                     if (!IsSocketConnected(sock))
                     {
                         sock.Close();
                         tcpMode = TcpOpModes.Connecting;
-                        InsertLog("TCP: Server is disconnected", 3211);
+                        InsertLog("Sever is disconnected", LogMsg.Sources.TCP);
 
                         if (_cs.TcpAutoCloseIfDisconnected)
                         {
                             _closeApp = true;
                         }
-
                         continue;
                     }
 
-                    // 3201: 측정요청 발생
                     if (_plcModeRef == PlcOpModes.Measruement && _plcToTcpMeasReq == true)
                     {
                         _plcToTcpMeasReq = false;
 
-                        if (!GetProductInforMsg(_plcData, _cs, out string[] tcpMsgs))
+                        if (!GetProductInforMsg(_plcData, _cs, out string[] tcpMsgs, out string errMsg))
                         {
-                            InsertLog("TCP: 제품 정보 생성 실패", 3201);
+                            InsertLog("Fail to get product information from PLC", LogMsg.Sources.TCP, 31200, errMsg);
                             sock.Close();
                             tcpMode = TcpOpModes.Connecting;
                         }
@@ -119,37 +114,39 @@ namespace PlcComDlg
                         {
                             if (!SendTcpMessage(sock, tcpMsgs[i], ref _tcpData))
                             {
-                                InsertLog("TCP: " + _tcpData.ComLastErrMsg, 3201);
+                                InsertLog("Fail to send product information to PC", LogMsg.Sources.TCP, 31200, _tcpData.LastErrMsg);
                                 sock.Close();
                                 tcpMode = TcpOpModes.Connecting;
                             }
+                            InsertLog(tcpMsgs[i], LogMsg.Sources.TCP);
                         }
 
                         Thread.Sleep(500); // 데이터 전송 속도 조절
 
                         if (!SendTcpMessage(sock, $"FLUX {_plcData.PlcModelNumber}", ref _tcpData))
                         {
-                            InsertLog("TCP: " + _tcpData.ComLastErrMsg, 3201);
+                            InsertLog("Fail to start measurement", LogMsg.Sources.TCP, 31200, _tcpData.LastErrMsg);
                             sock.Close();
                             tcpMode = TcpOpModes.Connecting;
                         }
+                        InsertLog(_tcpData.LastComMsg, LogMsg.Sources.TCP);
 
                         Thread.Sleep(_cs.TcpMeasStartDelay); // 데이터 전송 속도 조절
 
                         errCnt = 0;
                         tcpMode = TcpOpModes.Measurement;
                         _tcpData.MeasStartTime = DateTime.Now;
-                        InsertLog("TCP: Start measurement");
+                        
                     }
-                    // 321X: IDLE 동작
+                    // 31300: IDLE 동작
                     else
                     {
-                        // 3212: 제어 메시지 처리
+                        // 제어 메시지 처리
                         if (_tcpMsgQue.TryDequeue(out TcpData.ComMsg msg))
                         {
                             if (!SendTcpMessage(sock, msg.Message, ref _tcpData))
                             {
-                                InsertLog("TCP: " + _tcpData.ComLastErrMsg, 3212);
+                                InsertLog("Fail to send a control message to PC", LogMsg.Sources.TCP, 31300, _tcpData.LastErrMsg);
                                 sock.Close();
                                 tcpMode = TcpOpModes.Connecting;
                             }
@@ -167,7 +164,7 @@ namespace PlcComDlg
                         Thread.Sleep(_cs.TcpMonitorTimeMilSec);
                     }
                 }
-                // 3300: SMA 측정 완료 대기
+                // 31300: SMA 측정 완료 대기
                 else if (tcpMode == TcpOpModes.Measurement)
                 {
                     // SMA 측정 완료 체크
@@ -179,7 +176,7 @@ namespace PlcComDlg
                             _tcpToPlcMeasFin = true;
                             _tcpMeasErrFlag = false;
                             _tcpMeasErrMsg = "";
-                            InsertLog("TCP: Measurement is finished");
+                            InsertLog("READ=0", LogMsg.Sources.TCP);
                         }
                     }
                     // 에러 발생 횟수 체크
@@ -193,19 +190,20 @@ namespace PlcComDlg
                             _tcpMeasErrMsg = "COM ERR";
                             sock.Close();
                             tcpMode = TcpOpModes.Connecting;
-                            InsertLog("TCP: The number of com. error is greater than 10", 3300);
+                            InsertLog("Communication error", LogMsg.Sources.TCP, 31300, "The number of com. error is greater than 10");
                         }
                     }
 
                     // 타임아웃 체크
-                    TimeSpan ts = _tcpData.MeasStartTime - DateTime.Now;
+                    TimeSpan ts = DateTime.Now - _tcpData.MeasStartTime;
                     if (ts.TotalSeconds > _cs.TcpMaxMeasTimeSec)
                     {
                         tcpMode = TcpOpModes.Connected;
                         _tcpMeasErrFlag = true;
                         _tcpToPlcMeasFin = true;
                         _tcpMeasErrMsg = "Time out";
-                        InsertLog("TCP: Measurement timeout", 3300);
+                        SendTcpMessage(sock, $"ABORT", ref _tcpData);
+                        InsertLog("Timeout", LogMsg.Sources.TCP, 31300, $"{ts.TotalSeconds:f3}/{_cs.TcpMaxMeasTimeSec:f3} sec");
                     }
 
                     Thread.Sleep(_cs.TcpMeasFinCheckTimeMilSec);
@@ -222,7 +220,7 @@ namespace PlcComDlg
         }
         #endregion
 
-        #region TCP Worker 이벤트
+        #region 32000.Tcp.Worker.이벤트
         /// <summary>
         /// 워커 시작
         /// </summary>
@@ -245,7 +243,6 @@ namespace PlcComDlg
 
             _workerTcp.RunWorkerAsync();
         }
-        
 
         /// <summary>
         /// 진행상황 업데이트
@@ -290,14 +287,14 @@ namespace PlcComDlg
         private void Worker_TcpRunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
             BtnTcpStart.Text = "TCP Start";
-            InsertLog("TCP: the process is terminated");
+            InsertLog("The process is terminated", LogMsg.Sources.TCP);
             LblTcpServer.BackColor = DefaultBackColor;
 
             _tcpModeRef = TcpOpModes.Non;
         }
         #endregion
 
-        #region TCP 메소드
+        #region 33000.Tcp.메소드
         /// <summary>
         /// 소켓 연결 여부 체크
         /// </summary>
@@ -326,15 +323,6 @@ namespace PlcComDlg
                 return stateOfConnection == TcpState.Established;
             }
             return false;
-
-            //if (!s.Connected)
-            //{
-            //    return false;
-            //}
-
-            //bool pollRes = s.Poll(1000, SelectMode.SelectRead);
-
-            //return !(pollRes && s.Available == 0);
         }
 
         /// <summary>
@@ -346,18 +334,19 @@ namespace PlcComDlg
         /// <returns></returns>
         private static bool SendTcpMessage(Socket s, string msg, ref TcpData cd)
         {
+            cd.LastComMsg = msg;
+            cd.LastErrMsg = "";
             try
             {
                 cd.WriteBuf = Encoding.UTF8.GetBytes(msg);
                 s.Send(cd.WriteBuf, SocketFlags.None);
                 cd.ReadBufLen = s.Receive(cd.ReadBuf);
-                cd.ComLastErrMsg = "";
                 cd.LastCommTime = DateTime.Now;
                 return true;
             }
             catch (Exception ex)
             {
-                cd.ComLastErrMsg = ex.Message;
+                cd.LastErrMsg = ex.Message;
                 return false;
             }
         }
@@ -369,13 +358,13 @@ namespace PlcComDlg
         /// <param name="cs"></param>
         /// <param name="tcpMsgs"></param>
         /// <returns></returns>
-        private static bool GetProductInforMsg(PlcData plcData, ComSettings cs, out string[] tcpMsgs)
+        private static bool GetProductInforMsg(PlcData plcData, ComSettings cs, out string[] tcpMsgs, out string errMsg)
         {
             
             if (cs.ProductInfors.Count != plcData.ProductInforVals.Count)
             {
                 tcpMsgs = null;
-                MessageBox.Show("정의되지 않은 데이터 타입");
+                errMsg = "PLC에서 충분한 제품 정보를 넘겨주지 않음";
                 return false;
             }
 
@@ -383,10 +372,12 @@ namespace PlcComDlg
 
             for (int i = 0; i < cs.ProductInfors.Count; i++)
             {
-                string msg = $"custom \"{cs.ProductInfors[i].CustomFieldName}\" \"{plcData.ProductInforVals[i].ToString()}\"";
+                string msg = $"custom \"{cs.ProductInfors[i].CustomFieldName}\" ";
                 if (cs.ProductInfors[i].DataType == ComSettings.ProductInfor.DataTypes.Text)
                 {
-                    msg += $"\"{plcData.ProductInforVals[i].ToString()}\"";
+                    string nMsg = plcData.ProductInforVals[i].ToString();
+                    nMsg = nMsg.Substring(0, nMsg.IndexOf('\0'));
+                    msg += $" \"{nMsg}\"";
                 }
                 else if (cs.ProductInfors[i].DataType == ComSettings.ProductInfor.DataTypes.Word)
                 {
@@ -394,11 +385,12 @@ namespace PlcComDlg
                 }
                 else
                 {
-                    MessageBox.Show("정의되지 않은 데이터 타입");
+                    errMsg = "정의할 수 없는 제품 데이터 타입";
                     return false;
                 }
-                tcpMsgs[i] = $"custom \"{cs.ProductInfors[i].CustomFieldName}\" \"{plcData.ProductInforVals[i].ToString()}\"";
+                tcpMsgs[i] = msg;
             }
+            errMsg = "";
             return true;
         }
         #endregion

@@ -1,63 +1,138 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
+using System.Net;
+using System.Text;
+using System.Threading.Tasks;
 
 using S7.Net;
 
-
-namespace PlcCom
+namespace SmaPlc
 {
     /// <summary>
-    /// PLC 통신 제어 프로그램: 지멘스 S7을 기준으로 작성
+    /// 지멘스 S7 PLC 제어
     /// </summary>
-    public class PlcCtrl
+    public class SiemensS7 : PlcBase
     {
-        #region 변수선언
         /// <summary>
-        /// 마지막 에러
+        /// S7 연결 파라미터
         /// </summary>
-        protected string _lastError { get; set; }
+        public class ConParams
+        {
+            /// <summary>
+            /// CPU 타입
+            /// </summary>
+            public CpuType Cpu;
+            /// <summary>
+            /// IP 주소
+            /// </summary>
+            public IPAddress Ip;
+            /// <summary>
+            /// Rack 넘버
+            /// </summary>
+            public short Rack;
+            /// <summary>
+            /// Slot 넘버
+            /// </summary>
+            public short Slot;
+        }
 
         /// <summary>
-        /// 마지막 에러 메시지를 반환한다
-        /// </summary>
-        public string GetLastError { get { return _lastError; } }
-
-        /// <summary>
-        /// S7 PLC Object
+        /// PLC object
         /// </summary>
         private Plc _plc = null;
-        #endregion
 
-        #region 통신 제어 함수
+        #region 통신 제어
+
         /// <summary>
-        /// 통신을 open 한다
+        /// 파라미터 변경
         /// </summary>
+        /// <param name="conParams"></param>
+        /// <param name="item"></param>
         /// <returns></returns>
-        public bool Open(string ipAdd, CpuType ct = CpuType.S71500, Int16 rack = 0, Int16 slot = 0)
+        public override bool ConvertOpenParameter(string conParams, out object item)
         {
+            item = null;
+            if (conParams == "")
+            {
+                _errMsg = "{CPU type (enum): S7200|S7300|...}, {IP Address}, {Rack (short)}, {Slot (short)}";
+                return false;
+            }
+
+            string[] strs = conParams.Split(',');
+            if (strs.Length != 4)
+            {
+                _errMsg = "insufficient plc parameters";
+                return false;
+            }
+
+            var cp = new ConParams();
+
+            if (!Enum.TryParse(strs[0], out CpuType ct))
+            {
+                _errMsg = $"Cannot try parse CPU type: {strs[0]}";
+                return false;
+            }
+            cp.Cpu = ct;
+
+            if (!IPAddress.TryParse(strs[1], out IPAddress ip))
+            {
+                _errMsg = $"Cannot try parse CPU type: {strs[0]}";
+                return false;
+            }
+            cp.Ip = ip;
+
+            if (!short.TryParse(strs[2], out short rack))
+            {
+                _errMsg = $"Cannot try parse rack number: {strs[2]}";
+                return false;
+            }
+            cp.Rack = rack;
+
+            if (!short.TryParse(strs[3], out short slot))
+            {
+                _errMsg = $"Cannot try parse slot number: {strs[2]}";
+                return false;
+            }
+            cp.Slot = slot;
+            return true;
+        }
+
+        /// <summary>
+        /// 통신 연결
+        /// </summary>
+        /// <param name="conParams"></param>
+        /// <returns></returns>
+        public override bool Open(string conParams)
+        {
+            if (!ConvertOpenParameter(conParams, out object item))
+            {
+                return false;
+            }
+            ConParams cp = (ConParams)item;
+            
             try
             {
-                _plc = new Plc(ct, ipAdd, rack, slot);
+                _plc = new Plc(cp.Cpu, cp.Ip.ToString(), cp.Rack, cp.Slot);
                 _plc.Open();
                 return true;
             }
             catch (PlcException pe)
             {
-                _lastError = pe.Message;
+                _errMsg = pe.Message;
                 return false;
             }
             catch (Exception ex)
             {
-                _lastError = ex.Message;
+                _errMsg = ex.Message;
                 return false;
             }
         }
 
         /// <summary>
-        /// 통신을 종료 한다
+        /// PLC 통신 닫기
         /// </summary>
-        public void Close()
+        public override void Close()
         {
             if (_plc != null)
             {
@@ -66,66 +141,14 @@ namespace PlcCom
         }
         #endregion
 
-        #region Read 함수
+        #region Read
         /// <summary>
-        /// 주소의 word 데이터를 읽어온다
+        /// Bit 읽기
         /// </summary>
         /// <param name="add"></param>
         /// <param name="data"></param>
         /// <returns></returns>
-        public bool ReadWord(string add, out ushort data)
-        {
-            data = 0;
-            try
-            {
-                data = (ushort)_plc.Read(add.ToUpper());
-                return true;
-            }
-            catch (PlcException pe)
-            {
-                _lastError = pe.Message;
-                return false;
-            }
-            catch (Exception ex)
-            {
-                _lastError = ex.Message;
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// 주소의 word 데이터를 읽어온다
-        /// </summary>
-        /// <param name="add"></param>
-        /// <param name="data"></param>
-        /// <returns></returns>
-        public bool ReadDWord(string add, out uint data)
-        {
-            data = 0;
-            try
-            {
-                data = (uint)_plc.Read(add.ToUpper());
-                return true;
-            }
-            catch (PlcException pe)
-            {
-                _lastError = pe.Message;
-                return false;
-            }
-            catch (Exception ex)
-            {
-                _lastError = ex.Message;
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// 주소의 bit 데이터를 읽어온다
-        /// </summary>
-        /// <param name="add"></param>
-        /// <param name="data"></param>
-        /// <returns></returns>
-        public bool ReadBit(string add, out bool data)
+        public override bool ReadBit(string add, out bool data)
         {
             data = false;
             try
@@ -135,24 +158,78 @@ namespace PlcCom
             }
             catch (PlcException pe)
             {
-                _lastError = pe.Message;
+                _errMsg = pe.Message;
                 return false;
             }
             catch (Exception ex)
             {
-                _lastError = ex.Message;
+                _errMsg = ex.Message;
                 return false;
             }
         }
 
         /// <summary>
-        /// Stat address에서 length 만큼 바이트 단위로 읽어온다
+        /// Word 값을 읽어온다
+        /// </summary>
+        /// <param name="add"></param>
+        /// <param name="data"></param>
+        /// <returns></returns>
+        public override bool ReadWord(string add, out short data)
+        {
+            data = 0;
+            try
+            {
+                ushort udata = (ushort)_plc.Read(add.ToUpper());
+                data = (short)udata;
+                return true;
+            }
+            catch (PlcException pe)
+            {
+                _errMsg = pe.Message;
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _errMsg = ex.Message;
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// DWord 값을 읽어온다
+        /// </summary>
+        /// <param name="add"></param>
+        /// <param name="data"></param>
+        /// <returns></returns>
+        public override bool ReadDWord(string add, out int data)
+        {
+            data = 0;
+            try
+            {
+                uint udata = (uint)_plc.Read(add.ToUpper());
+                data = (int)_plc.Read(add.ToUpper());
+                return true;
+            }
+            catch (PlcException pe)
+            {
+                _errMsg = pe.Message;
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _errMsg = ex.Message;
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 바이트 데이터를 읽어온다
         /// </summary>
         /// <param name="startAdd"></param>
         /// <param name="len"></param>
         /// <param name="data"></param>
         /// <returns></returns>
-        public bool ReadBytes(string startAdd, int len, out byte[] data)
+        public override bool ReadBytes(string startAdd, int len, out byte[] data)
         {
             try
             {
@@ -163,26 +240,26 @@ namespace PlcCom
             catch (PlcException pe)
             {
                 data = new byte[0];
-                _lastError = pe.Message;
+                _errMsg = pe.Message;
                 return false;
             }
             catch (Exception ex)
             {
                 data = new byte[0];
-                _lastError = ex.Message;
+                _errMsg = ex.Message;
                 return false;
             }
         }
         #endregion
 
-        #region Write 함수
+        #region Write
         /// <summary>
-        /// 주소의 bit 데이터를 쓴다
+        /// 비트 데이터를 쓴다
         /// </summary>
         /// <param name="add"></param>
         /// <param name="data"></param>
         /// <returns></returns>
-        public bool WriteBit(string add, bool data)
+        public override bool WriteBit(string add, bool data)
         {
             try
             {
@@ -191,23 +268,23 @@ namespace PlcCom
             }
             catch (PlcException pe)
             {
-                _lastError = pe.Message;
+                _errMsg = pe.Message;
                 return false;
             }
             catch (Exception ex)
             {
-                _lastError = ex.Message;
+                _errMsg = ex.Message;
                 return false;
             }
         }
 
         /// <summary>
-        /// 주소에 데이터를 작성한다
+        /// Word 데이터를 쓴다
         /// </summary>
         /// <param name="add"></param>
         /// <param name="data"></param>
         /// <returns></returns>
-        public bool WriteWord(string add, short data)
+        public override bool WriteWord(string add, short data)
         {
             try
             {
@@ -216,37 +293,26 @@ namespace PlcCom
             }
             catch (PlcException pe)
             {
-                _lastError = pe.Message;
+                _errMsg = pe.Message;
                 return false;
             }
             catch (Exception ex)
             {
-                _lastError = ex.Message;
+                _errMsg = ex.Message;
                 return false;
             }
         }
 
         /// <summary>
-        /// Word 데이터를 작성한다
+        /// 다수 DWord 데이터를 쓴다
         /// </summary>
         /// <param name="startAdd"></param>
         /// <param name="data"></param>
         /// <returns></returns>
-        public bool WriteWords(string startAdd, int[] data)
+        public override bool WriteDWords(string startAdd, int[] data)
         {
             try
             {
-                //byte[] byData = new byte[data.Length * 2]; // 32비트->16비트 데이터로 변경하여 전송한다
-                //for (int i = 0; i < data.Length; i++)
-                //{
-                //    int nData = data[i];
-                //    byData[i * 2] = (byte)(nData & 0xFFFF);             // udata
-                //    byData[i * 2 + 1] = (byte)((nData >> 16) & 0xFFFF); // ldata
-                //}
-
-                //Parse(startAdd.ToUpper(), out DataType dt, out int dbNum, out VarType vt, out int add, out int bitNum);
-                //_plc.WriteBytes(dt, dbNum, add, byData);
-
                 Parse(startAdd.ToUpper(), out DataType dt, out int dbNum, out VarType vt, out int add, out int bitNum);
                 for (int i = 0; i < data.Length; i++)
                 {
@@ -257,12 +323,37 @@ namespace PlcCom
             }
             catch (PlcException pe)
             {
-                _lastError = pe.Message;
+                _errMsg = pe.Message;
                 return false;
             }
             catch (Exception ex)
             {
-                _lastError = ex.Message;
+                _errMsg = ex.Message;
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// DWord 데이터를 전송한다
+        /// </summary>
+        /// <param name="add"></param>
+        /// <param name="data"></param>
+        /// <returns></returns>
+        public override bool WriteDWord(string add, int data)
+        {
+            try
+            {
+                _plc.Write(add.ToUpper(), data);
+                return true;
+            }
+            catch (PlcException pe)
+            {
+                _errMsg = pe.Message;
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _errMsg = ex.Message;
                 return false;
             }
         }
