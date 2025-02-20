@@ -87,9 +87,33 @@ namespace PlcComDlg
                 /// </summary>
                 GetModelNumber,
                 /// <summary>
-                /// 측정 요청 비트를 토글한다
+                /// 토글-측정 요청 비트
                 /// </summary>
                 ToggleMeasReq,
+                /// <summary>
+                /// 토글-측정 요청 응답 비트
+                /// </summary>
+                ToggleMeasReqResp,
+                /// <summary>
+                /// 토글-측정 완료 비트
+                /// </summary>
+                ToggleMeasFin,
+                /// <summary>
+                /// 토글-Ok
+                /// </summary>
+                ToggleOk,
+                /// <summary>
+                /// 토글-Ng
+                /// </summary>
+                ToggleNg,
+                /// <summary>
+                /// 토글-Busy
+                /// </summary>
+                ToggleBusy,
+                /// <summary>
+                /// 토글-Alarm
+                /// </summary>
+                ToggleAlarm,
                 /// <summary>
                 /// MES 데이터를 업로드 한다
                 /// </summary>

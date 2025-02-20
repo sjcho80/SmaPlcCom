@@ -183,14 +183,38 @@ namespace PlcComDlg
         public string PlcAddModelNumber { get; set; } = "D10202";
         #endregion
 
-        #region PLC.Address.MES
+        #region PLC.MES
         /// <summary>
         /// MES 시작 주소 헤더
         /// </summary>
-        [Category("PLC.Address.MES")]
+        [Category("PLC.MES")]
         [DisplayName("MES start address")]
         [Description("MES start address")]
         public string PlcMesStartAddress { get; set; } = "";
+
+        /// <summary>
+        /// MES 데이터 스케일
+        /// </summary>
+        [Category("PLC.MES")]
+        [DisplayName("MES Data scale")]
+        [Description("MES data scale e.g) 1.234 * scale = 1234, where scale = 1000")]
+        public double PlcMesDataScale { get; set; } = 1000;
+
+        /// <summary>
+        /// Database path
+        /// </summary>
+        [Category("PLC.MES")]
+        [DisplayName("DB path")]
+        [Editor(typeof(FileNameEditor), typeof(UITypeEditor))]
+        public string DbPath { get; set; }
+
+        /// <summary>
+        /// Database columns
+        /// </summary>
+        [Category("PLC.MES")]
+        [DisplayName("DB columns")]
+        [Editor(@"System.Windows.Forms.Design.StringCollectionEditor," + "System.Design, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a", typeof(UITypeEditor))]
+        public List<string> DbColumns { get; set; } = new List<string>();
         #endregion
 
         #region PLC.Control
@@ -219,12 +243,28 @@ namespace PlcComDlg
         public int PlcConnRetryInterval { get; set; } = 3000;
 
         /// <summary>
-        /// 측정 타임아웃
+        /// 측정 중 하트비트 동작
         /// </summary>
         [Category("PLC.Control")]
         [DisplayName("Heart beat during measurement")]
         [Description("Toggle heart beat bit during measurement")]
         public bool PlcCtrlHeartBeatDuringMeas { get; set; } = false;
+
+        /// <summary>
+        /// 측정 전 OK/NG clear
+        /// </summary>
+        [Category("PLC.Control")]
+        [DisplayName("Auto clear-OK/NG")]
+        [Description("Clear the OK and NG flags Before a measurement")]
+        public bool PlcCtrlAutoClearOkNG { get; set; } = false;
+
+        /// <summary>
+        /// 측정 전 OK/NG clear
+        /// </summary>
+        [Category("PLC.Control")]
+        [DisplayName("Auto clear-MeasFin")]
+        [Description("Clear the measurement finish flag Before a measurement")]
+        public bool PlcCtrlAutoClearMeasFin { get; set; } = false;
 
         #endregion
 
@@ -302,32 +342,14 @@ namespace PlcComDlg
         [DisplayName("Auto close program")]
         [Description("Close this program if the TCP is disconnected")]
         public bool TcpAutoCloseIfDisconnected { get; set; } = false;
-        #endregion
-
-        #region Data
-        /// <summary>
-        /// MES 데이터 스케일
-        /// </summary>
-        [Category("Data")]
-        [DisplayName("MES Data scale")]
-        [Description("MES data scale e.g) 1.234 * scale = 1234, where scale = 1000")]
-        public double PlcMesDataScale { get; set; } = 1000;
 
         /// <summary>
-        /// Database path
+        /// TCP 연결 해제 시 자동 종료
         /// </summary>
-        [Category("Data")]
-        [DisplayName("DB path")]
-        [Editor(typeof(FileNameEditor), typeof(UITypeEditor))]
-        public string DbPath { get; set; }
-
-        /// <summary>
-        /// Database columns
-        /// </summary>
-        [Category("Data")]
-        [DisplayName("DB columns")]
-        [Editor(@"System.Windows.Forms.Design.StringCollectionEditor," + "System.Design, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a", typeof(UITypeEditor))]
-        public List<string> DbColumns { get; set; } = new List<string>();
+        [Category("TCP.Control")]
+        [DisplayName("Maximum error count")]
+        [Description("Maximum error count during measurement monitoring")]
+        public int TcpMaxErrorCount { get; set; } = 10;
         #endregion
 
         #region Control

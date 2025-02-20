@@ -47,6 +47,8 @@ namespace PlcComDlg
             /// </summary>
             ReadProductInfor,
         }
+
+        private long _lastDbId = -1;
         #endregion
 
         #region 변수선언
@@ -66,6 +68,7 @@ namespace PlcComDlg
         {
             #region 21100.Plc.Worker.초기화
             PlcOpModes plcMode = PlcOpModes.Connecting;
+            long lastDbId = -1;
 
             // PLC 제어 오브젝트 생성
             PlcBase pb;
@@ -106,18 +109,13 @@ namespace PlcComDlg
                     // 일정한 시간 간격으로 연결을 시도한다
                     if (pb.Open(_cs.PlcConnectionParam))
                     {
-                        // PC 비트를 초기화 한다
-                        if (ReadFlag(pb, _cs, ref _plcData.Flags))
+                        bool res = pb.WriteBit(_cs.PlcAddBusyBit, false)
+                            & pb.WriteBit(_cs.PlcAddMeasFinBit, false)
+                            & pb.WriteBit(_cs.PlcAddMeasReqRespBit, false);
+                        if (res)
                         {
-                            _plcData.Flags.Busy = false;
-                            _plcData.Flags.MeasFin = false;
-                            _plcData.Flags.MeasReqResp = false;
-
-                            if (WriteFlag(pb, _cs, _plcData.Flags))
-                            {
-                                plcMode = PlcOpModes.Connected;
-                                InsertLog("Connected", LogMsg.Sources.PLC);
-                            }
+                            plcMode = PlcOpModes.Connected;
+                            InsertLog("Connected", LogMsg.Sources.PLC);
                         }
                     }
                     else
@@ -138,6 +136,15 @@ namespace PlcComDlg
 
                     if (_plcData.Flags.MeasReq == true && _tcpModeRef == TcpOpModes.Connected)
                     {
+                        string errMsg;
+                        // 마지막 DB ID를 읽어온다
+                        if (!ReadLastIdFromDb(_cs, out lastDbId, out errMsg))
+                        {
+                            InsertLog($"Faile to read last DB Id", LogMsg.Sources.DB, 21300, errMsg);
+                            plcMode = PlcOpModes.Connecting;
+                            continue;
+                        }
+                        _lastDbId = lastDbId;
                         // 모델넘버 읽기
                         if (!pb.ReadWord(_cs.PlcAddModelNumber, out short modelNum))
                         {
@@ -148,16 +155,27 @@ namespace PlcComDlg
                         _plcData.PlcModelNumber = modelNum;
                         _plcGuiUpdateQue.Enqueue(PlcGuiEvents.ReadModelNumber);
 
-                        if (!ReadProductInfor(pb, _cs, ref _plcData, out string errMsg))
+                        // 제품정보 읽기
+                        if (!ReadProductInfor(pb, _cs, ref _plcData, out errMsg))
                         {
                             InsertLog($"Faile to read product information", LogMsg.Sources.PLC, 21300, errMsg);
                             plcMode = PlcOpModes.Connecting;
                             continue;
                         }
+                        _plcGuiUpdateQue.Enqueue(PlcGuiEvents.ReadProductInfor);
 
-                        // 플래그 설정 및 전송
-                        _plcData.Flags.Ok = _plcData.Flags.Ng = _plcData.Flags.MeasFin = false;
-                        _plcData.Flags.MeasReqResp = _plcData.Flags.Busy = true;
+                        // PLC flag 쓰기
+                        if (_cs.PlcCtrlAutoClearOkNG)
+                        {
+                            pb.WriteBit(_cs.PlcAddOkBit, false);
+                            pb.WriteBit(_cs.PlcAddNgBit, false);
+                        }
+                        if (_cs.PlcCtrlAutoClearMeasFin)
+                        {
+                            pb.WriteBit(_cs.PlcAddMeasFinBit, false);
+                        }
+                        pb.WriteBit(_cs.PlcAddMeasReqRespBit, true);
+                        pb.WriteBit(_cs.PlcAddBusyBit, true);
 
                         // TCP 측정 시작
                         _plcData.MeasStartTime = DateTime.Now;
@@ -165,6 +183,7 @@ namespace PlcComDlg
                         _plcToTcpMeasReq = true;
                         plcMode = PlcOpModes.Measruement;
                         InsertLog("Start measurement", LogMsg.Sources.PLC);
+                        InsertLog($"\tLast DB ID={lastDbId}", LogMsg.Sources.DB);
                     }
                     else
                     {                    
@@ -172,6 +191,7 @@ namespace PlcComDlg
                         if (_tcpModeRef == TcpOpModes.Connected)
                         {
                             _plcData.Flags.HeartBeat = !_plcData.Flags.HeartBeat;
+                            pb.WriteBit(_cs.PlcAddHeartBeatBit, _plcData.Flags.HeartBeat);
                         }
 
                         // 모니터 업무 처리
@@ -180,14 +200,6 @@ namespace PlcComDlg
                             InsertLog("Fail to PLC monitor", LogMsg.Sources.PLC, 21300, errMsg);
                         }
                         Thread.Sleep(_cs.PlcUpdateInterval);
-                    }
-
-                    // 플래그 작성
-                    if (!WriteFlag(pb, _cs, _plcData.Flags))
-                    {
-                        InsertLog($"Fail to write flags", LogMsg.Sources.PLC, 21300, pb.LastErrMsg);
-                        plcMode = PlcOpModes.Connecting;
-                        continue;
                     }
                 }
                 // 21400.Plc.Woker.제어-측정완료 대기               
@@ -201,20 +213,17 @@ namespace PlcComDlg
                         continue;
                     }
 
-
                     TimeSpan ts = DateTime.Now - _plcData.MeasStartTime;
                     // 측정 종료 이벤트 발생
                     if (_tcpToPlcMeasFin == true)
                     {
-                        _plcData.Flags.Busy = false;
-                        _plcData.Flags.MeasFin = true;
-
+                        bool tcpAlarm, tcpOk, tcpNg;
                         // 측정 성공
                         if (!_tcpMeasErrFlag)
                         {
                             InsertLog("Measurement finished", LogMsg.Sources.PLC);
-
                             string errMsg;
+
                             if (!ReadLastItemFromDb(_cs, ref _plcData, out errMsg))
                             {
                                 InsertLog($"Fail to read DB", LogMsg.Sources.DB, 21400, errMsg);
@@ -226,37 +235,70 @@ namespace PlcComDlg
                             }
 
                             // OK/NG/측정완료 플래그 설정
-                            _plcData.Flags.Ok = _plcData.DbPass != 0;
-                            _plcData.Flags.Ng = _plcData.DbPass == 0;
-                            _plcData.Flags.Alarm = false;
-                          
+                            tcpOk = _plcData.DbPass != 0;
+                            tcpNg = _plcData.DbPass == 0;
+                            tcpAlarm = false;
+
+                            //// 마지막 DB ID를 읽어온다
+                            //if (!ReadLastIdFromDb(_cs, out long newDbId, out errMsg))
+                            //{
+                            //    InsertLog($"Faile to read last DB Id", LogMsg.Sources.DB, 21300, errMsg);
+                            //    plcMode = PlcOpModes.Connecting;
+                            //    continue;
+                            //}
+                            //InsertLog($"New DB ID={newDbId}", LogMsg.Sources.PLC);
+
+                            //if (lastDbId < newDbId)
+                            //{
+                            //    if (!ReadLastItemFromDb(_cs, ref _plcData, out errMsg))
+                            //    {
+                            //        InsertLog($"Fail to read DB", LogMsg.Sources.DB, 21400, errMsg);
+                            //    }
+
+                            //    if (!WriteMesData(pb, _cs, _plcData, out errMsg))
+                            //    {
+                            //        InsertLog($"Fail to upload MES data", LogMsg.Sources.PLC, 21400, errMsg);
+                            //    }
+
+                            //    // OK/NG/측정완료 플래그 설정
+                            //    tcpOk = _plcData.DbPass != 0;
+                            //    tcpNg = _plcData.DbPass == 0;
+                            //    tcpAlarm = false;
+                            //}
+                            //else
+                            //{
+                            //    InsertLog($"Measurement failure: Last ID={lastDbId}/New ID={newDbId}", LogMsg.Sources.DB, 21400, _tcpMeasErrMsg);
+                            //    tcpOk = false;
+                            //    tcpNg = false;
+                            //    tcpAlarm = true;
+                            //}
                         }
                         // 측정 실패
                         else
                         {
                             InsertLog("Measurement failure", LogMsg.Sources.PLC, 21400, _tcpMeasErrMsg);
-                            _plcData.Flags.Ok = false;
-                            _plcData.Flags.Ng = false;
-                            _plcData.Flags.Alarm = true;
+                            tcpOk = tcpNg = false;
+                            tcpAlarm = true;
                         }
 
                         _plcGuiUpdateQue.Enqueue(PlcGuiEvents.MesUpload);
 
-                        if (!WriteFlag(pb, _cs, _plcData.Flags))
-                        {
-                            InsertLog("Fail to write flags", LogMsg.Sources.PLC, 21400, pb.LastErrMsg);
-                            plcMode = PlcOpModes.Connecting;
-                            continue;
-                        }
+                        pb.WriteBit(_cs.PlcAddAlarmBit, tcpAlarm);
+                        pb.WriteBit(_cs.PlcAddOkBit, tcpOk);
+                        pb.WriteBit(_cs.PlcAddNgBit, tcpNg);
+                        pb.WriteBit(_cs.PlcAddBusyBit, false);
+                        pb.WriteBit(_cs.PlcAddMeasFinBit, true);
                         plcMode = PlcOpModes.Connected;
                     }
                     // 측정 타임아웃 - 프로그래밍 오류
                     else if (ts.Seconds > _cs.PlcMeasFinWaitTimeOut)
                     {
-                        _plcData.Flags.Alarm = true;
-                        _plcData.Flags.Busy = false;
-                        _plcData.Flags.MeasFin = true;
                         InsertLog($"Measurement timeout", LogMsg.Sources.PLC, 21400, $"{ts.Seconds:f3}/{_cs.PlcMeasFinWaitTimeOut:f3} sec");
+                        pb.WriteBit(_cs.PlcAddAlarmBit, true);
+                        pb.WriteBit(_cs.PlcAddOkBit, false);
+                        pb.WriteBit(_cs.PlcAddNgBit, false);
+                        pb.WriteBit(_cs.PlcAddBusyBit, false);
+                        pb.WriteBit(_cs.PlcAddMeasFinBit, true);
                         plcMode = PlcOpModes.Connected;
                     }
                     // 측정 대기
@@ -266,6 +308,7 @@ namespace PlcComDlg
                         if (_cs.PlcCtrlHeartBeatDuringMeas)
                         {
                             _plcData.Flags.HeartBeat = !_plcData.Flags.HeartBeat;
+                            pb.WriteBit(_cs.PlcAddHeartBeatBit, _plcData.Flags.HeartBeat);
                         }
 
                         if (!PlcMonitor(pb, _cs, ref _plcMsgQue, ref _plcData, out string errMsg))
@@ -273,14 +316,6 @@ namespace PlcComDlg
                             InsertLog("Fail to PLC monitor", LogMsg.Sources.PLC, 21400, errMsg);
                         }
                         Thread.Sleep(_cs.PlcUpdateInterval);
-                    }
-
-                    // 플래그 작성
-                    if (!WriteFlag(pb, _cs, _plcData.Flags))
-                    {
-                        InsertLog($"Fail to write flags", LogMsg.Sources.PLC, 21400, pb.LastErrMsg);
-                        plcMode = PlcOpModes.Connecting;
-                        continue;
                     }
                 }
                 // GUI 업데이트
@@ -431,10 +466,6 @@ namespace PlcComDlg
                     _plcGuiUpdateQue.Enqueue(PlcGuiEvents.ReadProductInfor);
                     InsertLog(PlcData.ComMsg.MsgTypes.GetProductInfor.ToString(), LogMsg.Sources.PLC);
                 }
-                else if (msg.MsgType == PlcData.ComMsg.MsgTypes.ToggleMeasReq)
-                {
-                    pd.Flags.MeasReq = !pd.Flags.MeasReq;
-                }
                 else if (msg.MsgType == PlcData.ComMsg.MsgTypes.UploadMesData)
                 {
                     string errMsg1;
@@ -452,6 +483,38 @@ namespace PlcComDlg
                     }
                     _plcGuiUpdateQue.Enqueue(PlcGuiEvents.MesUpload);
                     InsertLog(PlcData.ComMsg.MsgTypes.UploadMesData.ToString(), LogMsg.Sources.PLC);
+                }
+                else if (msg.MsgType == PlcData.ComMsg.MsgTypes.ToggleMeasReq)
+                {
+                    pb.WriteBit(cs.PlcAddMeasReqBit, !pd.Flags.MeasReq);
+                }
+                else if (msg.MsgType == PlcData.ComMsg.MsgTypes.ToggleMeasReqResp)
+                {
+                    pb.WriteBit(cs.PlcAddMeasReqRespBit, !pd.Flags.MeasReqResp);
+                }
+                else if (msg.MsgType == PlcData.ComMsg.MsgTypes.ToggleMeasFin)
+                {
+                    pb.WriteBit(cs.PlcAddMeasFinBit, !pd.Flags.MeasFin);
+                }
+                else if (msg.MsgType == PlcData.ComMsg.MsgTypes.ToggleOk)
+                {
+                    pb.WriteBit(cs.PlcAddOkBit, !pd.Flags.Ok);
+                }
+                else if (msg.MsgType == PlcData.ComMsg.MsgTypes.ToggleNg)
+                {
+                    pb.WriteBit(cs.PlcAddNgBit, !pd.Flags.Ng);
+                }
+                else if (msg.MsgType == PlcData.ComMsg.MsgTypes.ToggleBusy)
+                {
+                    pb.WriteBit(cs.PlcAddBusyBit, !pd.Flags.Busy);
+                }
+                else if (msg.MsgType == PlcData.ComMsg.MsgTypes.ToggleAlarm)
+                {
+                    pb.WriteBit(cs.PlcAddAlarmBit, !pd.Flags.Alarm);
+                }
+                else
+                {
+                    throw new NotImplementedException();
                 }
             }
             return true;
@@ -474,6 +537,11 @@ namespace PlcComDlg
             }
             cf.MeasReq = bit;
 
+            if (!pb.ReadBit(cs.PlcAddMeasReqRespBit, out bit))
+            {
+                return false;
+            }
+            cf.MeasReqResp = bit;
             if (!pb.ReadBit(cs.PlcAddHeartBeatBit, out bit))
             {
                 return false;
@@ -522,6 +590,10 @@ namespace PlcComDlg
                 return false;
             }
 
+            if (!pb.WriteBit(cs.PlcAddMeasReqRespBit, cf.MeasReqResp))
+            {
+                return false;
+            }
             if (!pb.WriteBit(cs.PlcAddHeartBeatBit, cf.HeartBeat))
             {
                 return false;
@@ -668,6 +740,37 @@ namespace PlcComDlg
             }
             catch (Exception ex)
             {
+                errMsg = $"PLC: DB 데이터 로드 오류로 인한 중단: {ex.Message}";
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// DB에서 마지막 ID를 읽어온다
+        /// </summary>
+        /// <param name="cs"></param>
+        /// <param name="pd"></param>
+        /// <param name="errMsg"></param>
+        /// <returns></returns>
+        private static bool ReadLastIdFromDb(ComSettings cs, out long id, out string errMsg)
+        {
+            string strConn = $@"Data Source={cs.DbPath};Read Only=True;";
+            try
+            {
+                using (SQLiteConnection conn = new SQLiteConnection(strConn))
+                {
+                    conn.Open();
+                    SQLiteCommand cmd;
+
+                    cmd = new SQLiteCommand(@"select MAX(Id) from sma_measurement", conn);
+                    id = (long)cmd.ExecuteScalar();
+                }
+                errMsg = "";
+                return true;
+            }
+            catch (Exception ex)
+            {
+                id = -1;
                 errMsg = $"PLC: DB 데이터 로드 오류로 인한 중단: {ex.Message}";
                 return false;
             }

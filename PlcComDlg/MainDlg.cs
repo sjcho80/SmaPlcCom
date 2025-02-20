@@ -386,9 +386,9 @@ namespace PlcComDlg
                     {
                         ListViewItem lvi = new ListViewItem(new string[]
                         {
+                            $"{i * 2}",
                             _plcData.DbMesVals[i].Name,
                             _plcData.DbMesVals[i].MeasValue.ToString("f3"),
-                            $"{i * 2}",
                             _plcData.DbMesVals[i].MesValue.ToString("n0")
                         });
                         LvwDb.Items.Add(lvi);
@@ -671,7 +671,9 @@ namespace PlcComDlg
         {
             if (_plcModeRef == PlcOpModes.Connected || _plcModeRef == PlcOpModes.Measruement)
             {
-                _plcData.Flags.MeasReqResp = !_plcData.Flags.MeasReqResp;
+                PlcData.ComMsg msg = new PlcData.ComMsg();
+                msg.MsgType = PlcData.ComMsg.MsgTypes.ToggleMeasReqResp;
+                _plcMsgQue.Enqueue(msg);
             }
         }
 
@@ -684,7 +686,9 @@ namespace PlcComDlg
         {
             if (_plcModeRef == PlcOpModes.Connected || _plcModeRef == PlcOpModes.Measruement)
             {
-                _plcData.Flags.MeasFin = !_plcData.Flags.MeasFin;
+                PlcData.ComMsg msg = new PlcData.ComMsg();
+                msg.MsgType = PlcData.ComMsg.MsgTypes.ToggleMeasFin;
+                _plcMsgQue.Enqueue(msg);
             }
         }
 
@@ -697,7 +701,9 @@ namespace PlcComDlg
         {
             if (_plcModeRef == PlcOpModes.Connected || _plcModeRef == PlcOpModes.Measruement)
             {
-                _plcData.Flags.Ok = !_plcData.Flags.Ok;
+                PlcData.ComMsg msg = new PlcData.ComMsg();
+                msg.MsgType = PlcData.ComMsg.MsgTypes.ToggleOk;
+                _plcMsgQue.Enqueue(msg);
             }
         }
 
@@ -710,7 +716,9 @@ namespace PlcComDlg
         {
             if (_plcModeRef == PlcOpModes.Connected || _plcModeRef == PlcOpModes.Measruement)
             {
-                _plcData.Flags.Ng = !_plcData.Flags.Ng;
+                PlcData.ComMsg msg = new PlcData.ComMsg();
+                msg.MsgType = PlcData.ComMsg.MsgTypes.ToggleNg;
+                _plcMsgQue.Enqueue(msg);
             }
         }
 
@@ -723,7 +731,9 @@ namespace PlcComDlg
         {
             if (_plcModeRef == PlcOpModes.Connected || _plcModeRef == PlcOpModes.Measruement)
             {
-                _plcData.Flags.Busy = !_plcData.Flags.Busy;
+                PlcData.ComMsg msg = new PlcData.ComMsg();
+                msg.MsgType = PlcData.ComMsg.MsgTypes.ToggleBusy;
+                _plcMsgQue.Enqueue(msg);
             }
         }
 
@@ -736,7 +746,12 @@ namespace PlcComDlg
         {
             if (_plcModeRef == PlcOpModes.Connected || _plcModeRef == PlcOpModes.Measruement)
             {
-                _plcData.Flags.Alarm = !_plcData.Flags.Alarm;
+                if (_plcModeRef == PlcOpModes.Connected || _plcModeRef == PlcOpModes.Measruement)
+                {
+                    PlcData.ComMsg msg = new PlcData.ComMsg();
+                    msg.MsgType = PlcData.ComMsg.MsgTypes.ToggleAlarm;
+                    _plcMsgQue.Enqueue(msg);
+                }
             }
         }
 

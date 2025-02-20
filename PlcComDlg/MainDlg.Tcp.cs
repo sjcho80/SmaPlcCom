@@ -172,18 +172,48 @@ namespace PlcComDlg
                     {
                         if (_tcpData.ReadBuf[0] == '0')
                         {
-                            tcpMode = TcpOpModes.Connected;
-                            _tcpToPlcMeasFin = true;
-                            _tcpMeasErrFlag = false;
-                            _tcpMeasErrMsg = "";
-                            InsertLog("READ=0", LogMsg.Sources.TCP);
+                            string errMsg;
+                            ReadLastIdFromDb(_cs, out long newDbId, out errMsg);
+
+                            // 아날라이저 측정이 정상 종료
+                            if (_lastDbId < newDbId)
+                            {
+                                tcpMode = TcpOpModes.Connected;
+                                _tcpToPlcMeasFin = true;
+                                _tcpMeasErrFlag = false;
+                                _tcpMeasErrMsg = "";
+                                InsertLog($"Flux finished", LogMsg.Sources.TCP);
+                            }
+                            // 아날라이저 측정이 비정상 종료 - 통신 다시 시도
+                            else
+                            {
+                                if (!GetProductInforMsg(_plcData, _cs, out string[] tcpMsgs, out errMsg))
+                                {
+                                    errCnt++;
+                                }
+                                for (int i = 0; i < tcpMsgs.Length; i++)
+                                {
+                                    if (!SendTcpMessage(sock, tcpMsgs[i], ref _tcpData))
+                                    {
+                                        errCnt++;
+                                    }
+                                    InsertLog(tcpMsgs[i], LogMsg.Sources.TCP);
+                                }
+                                Thread.Sleep(500); // 데이터 전송 속도 조절
+                                if (!SendTcpMessage(sock, $"FLUX {_plcData.PlcModelNumber}", ref _tcpData))
+                                {
+                                    errCnt++;
+                                }
+                                InsertLog(_tcpData.LastComMsg, LogMsg.Sources.TCP);
+                                Thread.Sleep(_cs.TcpMeasStartDelay); // 데이터 전송 속도 조절
+                            }
                         }
                     }
                     // 에러 발생 횟수 체크
                     else
                     {
                         errCnt++;
-                        if (errCnt > 10)
+                        if (errCnt > _cs.TcpMaxErrorCount)
                         {
                             _tcpMeasErrFlag = true;
                             _tcpToPlcMeasFin = true;
@@ -376,7 +406,15 @@ namespace PlcComDlg
                 if (cs.ProductInfors[i].DataType == ComSettings.ProductInfor.DataTypes.Text)
                 {
                     string nMsg = plcData.ProductInforVals[i].ToString();
-                    nMsg = nMsg.Substring(0, nMsg.IndexOf('\0'));
+                    int nZeroInd = nMsg.IndexOf('\0');
+                    if (nZeroInd > 0)
+                    {
+                        nMsg = nMsg.Substring(0, nZeroInd);
+                    }
+                    else
+                    {
+                        nMsg = "NO DATA";
+                    }
                     msg += $" \"{nMsg}\"";
                 }
                 else if (cs.ProductInfors[i].DataType == ComSettings.ProductInfor.DataTypes.Word)
