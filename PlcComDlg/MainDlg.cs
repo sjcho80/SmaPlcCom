@@ -45,6 +45,10 @@ namespace PlcComDlg
             /// </summary>
             Connected,
             /// <summary>
+            /// User operation
+            /// </summary>
+            WaitUserOperation,
+            /// <summary>
             /// 측정 완료 대기
             /// </summary>
             Measruement,
@@ -229,7 +233,6 @@ namespace PlcComDlg
             else
             {
                 _cs = new ComSettings();
-                _cs.DbColumns.AddRange(new string[] { "SPM A MAX", "SPM A MIN", "SPM A AVR", "SPM A RNG", "SPM A STD", "SPM Zd MAX", "SPM Zd MIN", "SPM Zd AVR", "SPM Zd STD", "SPM Zd RNG", "pass", "failed_id" });
                 if (!SaveComSettings(_cs, ComSettings.FilePath, out string errMsg))
                 {
                     InsertLog("Fail to create settings file", LogMsg.Sources.APP, 11000, errMsg);
@@ -344,7 +347,7 @@ namespace PlcComDlg
         /// <param name="e"></param>
         private void BtnFolderDb_Click(object sender, EventArgs e)
         {
-            Process.Start(Path.GetDirectoryName(_cs.DbPath));
+            Process.Start(Path.GetDirectoryName(_cs.DbMeas.Path));
         }
 
         /// <summary>
@@ -386,7 +389,7 @@ namespace PlcComDlg
                     {
                         ListViewItem lvi = new ListViewItem(new string[]
                         {
-                            $"{i * 2}",
+                            _plcData.DbMesVals[i].Address,
                             _plcData.DbMesVals[i].Name,
                             _plcData.DbMesVals[i].MeasValue.ToString("f3"),
                             _plcData.DbMesVals[i].MesValue.ToString("n0")
@@ -471,24 +474,27 @@ namespace PlcComDlg
                 }
 
                 // DB 삽입
-                try
+                if (_cs.SaveAllLogToDb || log.ErrCode > 0)
                 {
-                    using (SQLiteConnection conn = new SQLiteConnection(_logSource))
+                    try
                     {
-                        conn.Open();
+                        using (SQLiteConnection conn = new SQLiteConnection(_logSource))
+                        {
+                            conn.Open();
 
-                        string sql = "INSERT INTO log (labdate, code, message) values (@param1, @param2, @param3)";
-                        SQLiteCommand cmd = new SQLiteCommand(sql, conn);
-                        cmd.Parameters.Add(new SQLiteParameter("@param1", log.EventTime));
-                        cmd.Parameters.Add(new SQLiteParameter("@param2", log.ErrCode));
-                        cmd.Parameters.Add(new SQLiteParameter("@param3", log.Message));
-                        cmd.ExecuteNonQuery();
+                            string sql = "INSERT INTO log (labdate, code, message) values (@param1, @param2, @param3)";
+                            SQLiteCommand cmd = new SQLiteCommand(sql, conn);
+                            cmd.Parameters.Add(new SQLiteParameter("@param1", log.EventTime));
+                            cmd.Parameters.Add(new SQLiteParameter("@param2", log.ErrCode));
+                            cmd.Parameters.Add(new SQLiteParameter("@param3", log.Message));
+                            cmd.ExecuteNonQuery();
+                        }
                     }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.Message);
-                    TsslLoadLog.BackColor = Color.Orange;
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(ex.Message);
+                        TsslLoadLog.BackColor = Color.Orange;
+                    }
                 }
             }
 
@@ -811,6 +817,27 @@ namespace PlcComDlg
             s.BackColor = DefaultBackColor;
             s.Text = "PLC ALARM";
         }
+
+
+        private void BtnReadCustomNum_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void BtnCustomReq_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void BtnCustomFin_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void BtnCustomAlm_Click(object sender, EventArgs e)
+        {
+
+        }
         #endregion
 
         #region 16000.메소드
@@ -859,7 +886,6 @@ namespace PlcComDlg
             catch (Exception ex)
             {
                 _cs = new ComSettings();
-                _cs.DbColumns.AddRange(new string[] { "SPM A MAX", "SPM A MIN", "SPM A AVR", "SPM A RNG", "SPM A STD", "SPM Zd MAX", "SPM Zd MIN", "SPM Zd AVR", "SPM Zd STD", "SPM Zd RNG", "pass", "failed_id" });
                 errMsg = ex.Message;
                 res = false;
             }
@@ -893,8 +919,8 @@ namespace PlcComDlg
             _logQue.Enqueue(msg);
             return true;
         }
-        #endregion
 
+        #endregion
 
     }
 }

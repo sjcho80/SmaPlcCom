@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms.Design;
+using System.Runtime.InteropServices;
 
 using SmaPlc;
 
@@ -18,6 +19,252 @@ namespace PlcComDlg
     [Serializable]
     public class ComSettings
     {
+        #region 타입정의
+        /// <summary>
+        /// 설정 DB descripter
+        /// </summary>
+        public class DbInforSettingsConverter : ExpandableObjectConverter
+        {
+            public override object ConvertTo(ITypeDescriptorContext context, System.Globalization.CultureInfo culture, object value, Type destType)
+            {
+                if (destType == typeof(string) && value is DbInforSettings)
+                {
+                    DbInforSettings sdi = (DbInforSettings)value;
+
+                    return $"{sdi.CondItems.Count} items, {sdi.Path}";
+                }
+                return base.ConvertTo(context, culture, value, destType);
+            }
+        }
+
+        /// <summary>
+        /// 설정 DB 정보
+        /// </summary>
+        [Serializable]
+        [TypeConverter(typeof(DbInforSettingsConverter))]
+        public class DbInforSettings
+        {
+            /// <summary>
+            /// 설정 DB MES 업로드 아이템
+            /// </summary>
+            [Serializable]
+            public class CondItemInf
+            {
+                /// <summary>
+                /// 텍스트로부터 1개의 정수를 읽어온다
+                /// </summary>
+                /// <param name="buffer"></param>
+                /// <param name="format"></param>
+                /// <param name="arg0"></param>
+                /// <returns></returns>
+                [DllImport("msvcrt.dll", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
+                public static extern int sscanf(string buffer, string format, __arglist);
+
+                /// <summary>
+                /// 이름
+                /// </summary>
+                [Category("Information")]
+                [Description("Name")]
+                [DefaultValue("")]
+                public string Name { get; set; } = "";
+
+                /// <summary>
+                /// 스캔하고자 하는 DB Id
+                /// </summary>
+                [Category("Information")]
+                [Description("DB Id")]
+                [DefaultValue(0)]
+                public long Id { get; set; } = 0;
+
+                /// <summary>
+                /// Err
+                /// </summary>
+                [Category("Information")]
+                [Description("Model number")]
+                [DefaultValue(0)]
+                public long ModelNumber { get; set; } = 0;
+
+                /// <summary>
+                /// 활성화 여부
+                /// </summary>
+                [Category("Control")]
+                [Description("활성화 여부")]
+                [DefaultValue(false)]
+                public bool Enable { get; set; } = false;
+
+                /// <summary>
+                /// 파라미터 순서 (쉼표로 구분됨)
+                /// </summary>
+                [Category("Control")]
+                [Description("Parameter format")]
+                [DefaultValue("SPM A MAX, %f")]
+                public string ParameterFormat { get; set; } = "SPM A MAX, %lf";
+
+                /// <summary>
+                /// 파라미터 order
+                /// </summary>
+                [Category("Control")]
+                [Description("Parameter order")]
+                [DefaultValue(1)]
+                public int ParameterOrder { get; set; } = 1;
+
+
+                /// <summary>
+                /// 데이터 스케일
+                /// </summary>
+                [Category("Control")]
+                [Description("Data scale")]
+                [DefaultValue(1000)]
+                public int Scale { get; set; } = 1000;
+
+                /// <summary>
+                /// 업로드 데이터 주소
+                /// </summary>
+                [Category("Control")]
+                [Description("Address")]
+                public string Address { get; set; } = "";
+
+
+                /// <summary>
+                /// Parse parameter
+                /// </summary>
+                /// <param name="paramText"></param>
+                /// <param name="paramVal"></param>
+                /// <param name="errMsg"></param>
+                /// <returns></returns>
+                public bool ParseParam(string paramText, out double paramVal, out string errMsg)
+                {
+                    try
+                    {
+                        double arg0 = 0, arg1 = 0, arg2 = 0;
+                        double[] args = new double[256];
+                        if (ParameterOrder < 1 || ParameterOrder > 2)
+                        {
+                            throw new Exception($"파라미터 order 제한 {ParameterOrder}");
+                        }
+                        int res = sscanf(paramText, ParameterFormat, __arglist(ref arg0, ref arg1, ref arg2));
+
+                        paramVal = -1;
+                        if (ParameterOrder == 1)
+                        {
+                            paramVal = arg0;
+                        }
+                        else if (ParameterOrder == 2)
+                        {
+                            paramVal = arg1;
+                        }
+                        else if (ParameterOrder == 3)
+                        {
+                            paramVal = arg2;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        errMsg = $"Condition 텍스트 추출 실패 ({paramText}, {ParameterFormat}): {ex.Message}";
+                        paramVal = 0;
+                        return false;
+                    }
+                    errMsg = "";
+                    return true;
+                }
+            }
+
+            /// <summary>
+            /// Db 경로
+            /// </summary>
+            [DisplayName("DB Path")]
+            [Description("Settings database path")]
+            [Editor(typeof(FileNameEditor), typeof(UITypeEditor))]
+            public string Path { get; set; } = "";
+
+            /// <summary>
+            /// MES 업로드 아이템
+            /// </summary>
+            [DisplayName("Upload items")]
+            [Description("Settings database path")]
+            public List<CondItemInf> CondItems { get; set; } = new List<CondItemInf>();
+        }
+
+        /// <summary>
+        /// 측정 DB descripter
+        /// </summary>
+        public class DbInforMeasConverter : ExpandableObjectConverter
+        {
+            public override object ConvertTo(ITypeDescriptorContext context, System.Globalization.CultureInfo culture, object value, Type destType)
+            {
+                if (destType == typeof(string) && value is DbInforMeas)
+                {
+                    DbInforMeas sdi = (DbInforMeas)value;
+
+                    return $"{sdi.MeasCols.Count} items, {sdi.Path}";
+                }
+                return base.ConvertTo(context, culture, value, destType);
+            }
+        }
+
+        /// <summary>
+        /// 측정 DB 정보
+        /// </summary>
+        [Serializable]
+        [TypeConverter(typeof(DbInforMeasConverter))]
+        public class DbInforMeas
+        {
+            /// <summary>
+            /// 설정 DB MES 업로드 아이템
+            /// </summary>
+            [Serializable]
+            public class MeasColInf
+            {
+                /// <summary>
+                /// 이름
+                /// </summary>
+                [Category("Information")]
+                [Description("Column name")]
+                [DefaultValue("")]
+                public string Name { get; set; } = "";
+
+                /// <summary>
+                /// 활성화 여부
+                /// </summary>
+                [Category("Control")]
+                [Description("활성화 여부")]
+                [DefaultValue(false)]
+                public bool Enable { get; set; } = false;
+
+                /// <summary>
+                /// 데이터 스케일
+                /// </summary>
+                [Category("Control")]
+                [Description("Data scale")]
+                [DefaultValue(1000)]
+                public int Scale { get; set; } = 1000;
+
+                /// <summary>
+                /// 업로드 데이터 주소
+                /// </summary>
+                [Category("Control")]
+                [Description("Address")]
+                [DefaultValue("")]
+                public string Address { get; set; } = "";
+            }
+
+            /// <summary>
+            /// Db 경로
+            /// </summary>
+            [DisplayName("DB Path")]
+            [Description("Settings database path")]
+            [Editor(typeof(FileNameEditor), typeof(UITypeEditor))]
+            public string Path { get; set; } = "";
+
+            /// <summary>
+            /// MES 업로드 아이템
+            /// </summary>
+            [DisplayName("Upload items")]
+            [Description("Settings database path")]
+            public List<MeasColInf> MeasCols { get; set; } = new List<MeasColInf>();
+        }
+        #endregion
+
         #region PLC.Connection
         /// <summary>
         /// PLC 타입
@@ -185,36 +432,22 @@ namespace PlcComDlg
 
         #region PLC.MES
         /// <summary>
-        /// MES 시작 주소 헤더
+        /// Database settings 정보
         /// </summary>
         [Category("PLC.MES")]
-        [DisplayName("MES start address")]
-        [Description("MES start address")]
-        public string PlcMesStartAddress { get; set; } = "";
+        [DisplayName("DB - Settings")]
+        public DbInforSettings DbSettings { get; set; } = new DbInforSettings();
 
         /// <summary>
-        /// MES 데이터 스케일
+        /// Database settings 정보
         /// </summary>
         [Category("PLC.MES")]
-        [DisplayName("MES Data scale")]
-        [Description("MES data scale e.g) 1.234 * scale = 1234, where scale = 1000")]
-        public double PlcMesDataScale { get; set; } = 1000;
-
-        /// <summary>
-        /// Database path
-        /// </summary>
-        [Category("PLC.MES")]
-        [DisplayName("DB path")]
-        [Editor(typeof(FileNameEditor), typeof(UITypeEditor))]
-        public string DbPath { get; set; }
-
-        /// <summary>
-        /// Database columns
-        /// </summary>
-        [Category("PLC.MES")]
-        [DisplayName("DB columns")]
-        [Editor(@"System.Windows.Forms.Design.StringCollectionEditor," + "System.Design, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a", typeof(UITypeEditor))]
-        public List<string> DbColumns { get; set; } = new List<string>();
+        [DisplayName("DB - Measurement")]
+        [Description("Path: settings file path\r\n" +
+            "Id: condition item ID\r\n" +
+            "Model number: model number\r\n" +
+            "Parameter format: parameter format - B 0 Zp 0, %lf")]
+        public DbInforMeas DbMeas { get; set; } = new DbInforMeas();
         #endregion
 
         #region PLC.Control
@@ -259,12 +492,20 @@ namespace PlcComDlg
         public bool PlcCtrlAutoClearOkNG { get; set; } = false;
 
         /// <summary>
-        /// 측정 전 OK/NG clear
+        /// 측정 전 측정완료 클리어
         /// </summary>
         [Category("PLC.Control")]
         [DisplayName("Auto clear-MeasFin")]
         [Description("Clear the measurement finish flag Before a measurement")]
         public bool PlcCtrlAutoClearMeasFin { get; set; } = false;
+
+        /// <summary>
+        /// 측정 전 측정완료 클리어
+        /// </summary>
+        [Category("PLC.Control")]
+        [DisplayName("Auto clear-MeasFin")]
+        [Description("Clear the meas. req. resp flag before set the meas. fin. flag")]
+        public bool PlcCtrlAutoClearMeasReqResp { get; set; } = false;
 
         #endregion
 
@@ -370,12 +611,22 @@ namespace PlcComDlg
         public bool AutoStart { get; set; } = false;
 
         /// <summary>
-        /// 자동 시작 여부
+        /// 최대 로그 라인 수
         /// </summary>
         [Category("Control")]
         [DisplayName("Maximum log lines")]
         [Description("The maximum number of lines in the log window")]
         public int LogMaximumLine { get; set; } = 100;
+
+
+        /// <summary>
+        /// 모든 이벤트 로그를 저장한다
+        /// </summary>
+        [Category("Control")]
+        [DisplayName("Save all log to db")]
+        [Description("True: 모든 이벤트 로그 저장/false: error 로그만 저장")]
+        [DefaultValue(false)]
+        public bool SaveAllLogToDb { get; set; } = false;
         #endregion
 
         #region 메소드

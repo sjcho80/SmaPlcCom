@@ -34,6 +34,7 @@ namespace PlcComDlg
         /// <param name="e"></param>
         private void Worker_TcpDoWork(object sender, DoWorkEventArgs e)
         {
+            // Note: 예외처리 할 것
             TcpOpModes tcpMode = TcpOpModes.Connecting;
             Socket sock = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             int errCnt = 0;
@@ -86,82 +87,81 @@ namespace PlcComDlg
                 // 31200: TCP 모니터
                 else if (tcpMode == TcpOpModes.Connected)
                 {
-                    if (!IsSocketConnected(sock))
+                    try
                     {
+                        // 연결 상태 체크
+                        if (!IsSocketConnected(sock))
+                        {
+                            if (_cs.TcpAutoCloseIfDisconnected)
+                            {
+                                _closeApp = true;
+                            }
+                            break;
+                        }
+
+                        // 측정요청 체크
+                        if (_plcModeRef == PlcOpModes.Measruement && _plcToTcpMeasReq == true)
+                        {
+                            _plcToTcpMeasReq = false;
+
+                            if (!GetProductInforMsg(_plcData, _cs, out string[] tcpMsgs, out string errMsg))
+                            {
+                                throw new Exception("Fail to get product information from PLC");
+                            }
+
+                            for (int i = 0; i < tcpMsgs.Length; i++)
+                            {
+                                if (!SendTcpMessage(sock, tcpMsgs[i], ref _tcpData))
+                                {
+                                    throw new Exception($"Fail to send product information to PC: {_tcpData.LastErrMsg}");
+                                }
+                                InsertLog(tcpMsgs[i], LogMsg.Sources.TCP);
+                            }
+
+                            Thread.Sleep(500); // 데이터 전송 속도 조절
+
+                            if (!SendTcpMessage(sock, $"FLUX {_plcData.PlcModelNumber}", ref _tcpData))
+                            {
+                                throw new Exception($"Fail to start measurement: {_tcpData.LastErrMsg}");
+                            }
+                            InsertLog(_tcpData.LastComMsg, LogMsg.Sources.TCP);
+
+                            Thread.Sleep(_cs.TcpMeasStartDelay); // 데이터 전송 속도 조절
+
+                            errCnt = 0;
+                            tcpMode = TcpOpModes.Measurement;
+                            _tcpData.MeasStartTime = DateTime.Now;
+                        }
+                        // IDLE 동작
+                        else
+                        {
+                            // 제어 메시지 처리
+                            if (_tcpMsgQue.TryDequeue(out TcpData.ComMsg msg))
+                            {
+                                if (!SendTcpMessage(sock, msg.Message, ref _tcpData))
+                                {
+                                    throw new Exception($"Fail to send a control message to PC: {_tcpData.LastErrMsg}");
+                                }
+                            }
+
+                            // 하트비트 타임 체크
+                            TimeSpan ts = DateTime.Now - _tcpData.LastCommTime;
+                            if (ts.TotalMinutes > _cs.TcpIdleTimeMinLimit)
+                            {
+                                TcpData.ComMsg idleMsg = new TcpData.ComMsg();
+                                idleMsg.Message = $"*CLS";
+                                _tcpMsgQue.Enqueue(idleMsg);
+                            }
+
+                            Thread.Sleep(_cs.TcpMonitorTimeMilSec);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // 예외 발생 시 connecting mode로 돌아간다
+                        InsertLog(ex.Message, LogMsg.Sources.TCP, 31200, _tcpData.LastErrMsg);
                         sock.Close();
                         tcpMode = TcpOpModes.Connecting;
-                        InsertLog("Sever is disconnected", LogMsg.Sources.TCP);
-
-                        if (_cs.TcpAutoCloseIfDisconnected)
-                        {
-                            _closeApp = true;
-                        }
-                        continue;
-                    }
-
-                    if (_plcModeRef == PlcOpModes.Measruement && _plcToTcpMeasReq == true)
-                    {
-                        _plcToTcpMeasReq = false;
-
-                        if (!GetProductInforMsg(_plcData, _cs, out string[] tcpMsgs, out string errMsg))
-                        {
-                            InsertLog("Fail to get product information from PLC", LogMsg.Sources.TCP, 31200, errMsg);
-                            sock.Close();
-                            tcpMode = TcpOpModes.Connecting;
-                        }
-
-                        for (int i = 0; i < tcpMsgs.Length; i++)
-                        {
-                            if (!SendTcpMessage(sock, tcpMsgs[i], ref _tcpData))
-                            {
-                                InsertLog("Fail to send product information to PC", LogMsg.Sources.TCP, 31200, _tcpData.LastErrMsg);
-                                sock.Close();
-                                tcpMode = TcpOpModes.Connecting;
-                            }
-                            InsertLog(tcpMsgs[i], LogMsg.Sources.TCP);
-                        }
-
-                        Thread.Sleep(500); // 데이터 전송 속도 조절
-
-                        if (!SendTcpMessage(sock, $"FLUX {_plcData.PlcModelNumber}", ref _tcpData))
-                        {
-                            InsertLog("Fail to start measurement", LogMsg.Sources.TCP, 31200, _tcpData.LastErrMsg);
-                            sock.Close();
-                            tcpMode = TcpOpModes.Connecting;
-                        }
-                        InsertLog(_tcpData.LastComMsg, LogMsg.Sources.TCP);
-
-                        Thread.Sleep(_cs.TcpMeasStartDelay); // 데이터 전송 속도 조절
-
-                        errCnt = 0;
-                        tcpMode = TcpOpModes.Measurement;
-                        _tcpData.MeasStartTime = DateTime.Now;
-                        
-                    }
-                    // 31300: IDLE 동작
-                    else
-                    {
-                        // 제어 메시지 처리
-                        if (_tcpMsgQue.TryDequeue(out TcpData.ComMsg msg))
-                        {
-                            if (!SendTcpMessage(sock, msg.Message, ref _tcpData))
-                            {
-                                InsertLog("Fail to send a control message to PC", LogMsg.Sources.TCP, 31300, _tcpData.LastErrMsg);
-                                sock.Close();
-                                tcpMode = TcpOpModes.Connecting;
-                            }
-                        }
-
-                        // 3213: 하트비트 타임 체크
-                        TimeSpan ts = DateTime.Now - _tcpData.LastCommTime;
-                        if (ts.TotalMinutes > _cs.TcpIdleTimeMinLimit)
-                        {
-                            TcpData.ComMsg idleMsg = new TcpData.ComMsg();
-                            idleMsg.Message = $"*CLS";
-                            _tcpMsgQue.Enqueue(idleMsg);
-                        }
-
-                        Thread.Sleep(_cs.TcpMonitorTimeMilSec);
                     }
                 }
                 // 31300: SMA 측정 완료 대기
@@ -390,7 +390,7 @@ namespace PlcComDlg
         /// <returns></returns>
         private static bool GetProductInforMsg(PlcData plcData, ComSettings cs, out string[] tcpMsgs, out string errMsg)
         {
-            
+
             if (cs.ProductInfors.Count != plcData.ProductInforVals.Count)
             {
                 tcpMsgs = null;

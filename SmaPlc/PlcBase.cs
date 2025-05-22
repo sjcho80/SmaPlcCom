@@ -146,5 +146,13 @@ namespace SmaPlc
         /// </summary>
         public int LastErrCode { get { return _errCode; } }
         #endregion
+
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        public PlcBase()
+        {
+
+        }
     }
 }

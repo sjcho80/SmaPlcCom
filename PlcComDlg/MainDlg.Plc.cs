@@ -111,6 +111,8 @@ namespace PlcComDlg
                     {
                         bool res = pb.WriteBit(_cs.PlcAddBusyBit, false)
                             & pb.WriteBit(_cs.PlcAddMeasFinBit, false)
+                            & pb.WriteBit(_cs.PlcAddOkBit, false)
+                            & pb.WriteBit(_cs.PlcAddNgBit, false)
                             & pb.WriteBit(_cs.PlcAddMeasReqRespBit, false);
                         if (res)
                         {
@@ -238,40 +240,6 @@ namespace PlcComDlg
                             tcpOk = _plcData.DbPass != 0;
                             tcpNg = _plcData.DbPass == 0;
                             tcpAlarm = false;
-
-                            //// 마지막 DB ID를 읽어온다
-                            //if (!ReadLastIdFromDb(_cs, out long newDbId, out errMsg))
-                            //{
-                            //    InsertLog($"Faile to read last DB Id", LogMsg.Sources.DB, 21300, errMsg);
-                            //    plcMode = PlcOpModes.Connecting;
-                            //    continue;
-                            //}
-                            //InsertLog($"New DB ID={newDbId}", LogMsg.Sources.PLC);
-
-                            //if (lastDbId < newDbId)
-                            //{
-                            //    if (!ReadLastItemFromDb(_cs, ref _plcData, out errMsg))
-                            //    {
-                            //        InsertLog($"Fail to read DB", LogMsg.Sources.DB, 21400, errMsg);
-                            //    }
-
-                            //    if (!WriteMesData(pb, _cs, _plcData, out errMsg))
-                            //    {
-                            //        InsertLog($"Fail to upload MES data", LogMsg.Sources.PLC, 21400, errMsg);
-                            //    }
-
-                            //    // OK/NG/측정완료 플래그 설정
-                            //    tcpOk = _plcData.DbPass != 0;
-                            //    tcpNg = _plcData.DbPass == 0;
-                            //    tcpAlarm = false;
-                            //}
-                            //else
-                            //{
-                            //    InsertLog($"Measurement failure: Last ID={lastDbId}/New ID={newDbId}", LogMsg.Sources.DB, 21400, _tcpMeasErrMsg);
-                            //    tcpOk = false;
-                            //    tcpNg = false;
-                            //    tcpAlarm = true;
-                            //}
                         }
                         // 측정 실패
                         else
@@ -283,6 +251,10 @@ namespace PlcComDlg
 
                         _plcGuiUpdateQue.Enqueue(PlcGuiEvents.MesUpload);
 
+                        if (_cs.PlcCtrlAutoClearMeasReqResp)
+                        {
+                            pb.WriteBit(_cs.PlcAddMeasReqRespBit, false);
+                        }
                         pb.WriteBit(_cs.PlcAddAlarmBit, tcpAlarm);
                         pb.WriteBit(_cs.PlcAddOkBit, tcpOk);
                         pb.WriteBit(_cs.PlcAddNgBit, tcpNg);
@@ -294,6 +266,10 @@ namespace PlcComDlg
                     else if (ts.Seconds > _cs.PlcMeasFinWaitTimeOut)
                     {
                         InsertLog($"Measurement timeout", LogMsg.Sources.PLC, 21400, $"{ts.Seconds:f3}/{_cs.PlcMeasFinWaitTimeOut:f3} sec");
+                        if (_cs.PlcCtrlAutoClearMeasReqResp)
+                        {
+                            pb.WriteBit(_cs.PlcAddMeasReqRespBit, false);
+                        }
                         pb.WriteBit(_cs.PlcAddAlarmBit, true);
                         pb.WriteBit(_cs.PlcAddOkBit, false);
                         pb.WriteBit(_cs.PlcAddNgBit, false);
@@ -318,6 +294,12 @@ namespace PlcComDlg
                         Thread.Sleep(_cs.PlcUpdateInterval);
                     }
                 }
+                // 21500.Plc.Woker.제어-사용자 작업
+                else if (plcMode == PlcOpModes.WaitUserOperation)
+                {
+
+                }
+
                 // GUI 업데이트
                 _workerPlc.ReportProgress((int)plcMode);
             }
@@ -686,9 +668,13 @@ namespace PlcComDlg
         /// <returns></returns>
         private static bool ReadLastItemFromDb(ComSettings cs, ref PlcData pd, out string errMsg)
         {
-            string strConn = $@"Data Source={cs.DbPath};Read Only=True;";
+            string strConn;
+
+            // 측정 아이템 정보를 읽어온다
             try
             {
+                var lsMeas = cs.DbMeas.MeasCols.FindAll(x => x.Enable);
+                strConn = $@"Data Source={cs.DbMeas.Path};Read Only=True;";
                 using (SQLiteConnection conn = new SQLiteConnection(strConn))
                 {
                     conn.Open();
@@ -700,13 +686,16 @@ namespace PlcComDlg
                     string sql = $"SELECT * FROM sma_measurement WHERE Id = {pd.DbId}";
                     cmd = new SQLiteCommand(sql, conn);
                     SQLiteDataReader rdr = cmd.ExecuteReader();
-
                     var columns = Enumerable.Range(0, rdr.FieldCount).Select(rdr.GetName).ToList();
-                    for (int i = 0; i < cs.DbColumns.Count; i++)
+
+
+                    // Column 존재여부 검증
+                    for (int i = 0; i < lsMeas.Count; i++)
                     {
-                        if (columns.Find(n => n == cs.DbColumns[i]) == null)
+                        string colName = lsMeas[i].Name;
+                        if (columns.Find(n => n == colName) == null)
                         {
-                            throw new Exception($"DB 테이블에 {cs.DbColumns[i]} 필드가 존재하지 않습니다");
+                            throw new Exception($"DB 테이블에 {colName} 필드가 존재하지 않습니다");
                         }
                     }
 
@@ -714,26 +703,73 @@ namespace PlcComDlg
                     {
                         pd.DbPass = Convert.ToInt64(rdr["pass"]);
                         pd.DbFailedId = Convert.ToInt64(rdr["failed_id"]);
-
                         pd.DbMesVals.Clear();
-                        foreach (string name in cs.DbColumns)
+
+                        for (int i = 0; i < lsMeas.Count; i++)
                         {
                             PlcData.MesDatum md = new PlcData.MesDatum();
-                            md.Name = name;
-                            if (DBNull.Value != rdr[name])
+                            md.Name = lsMeas[i].Name;
+                            if (DBNull.Value != rdr[md.Name])
                             {
-                                md.MeasValue = Convert.ToDouble(rdr[name]);
+                                md.MeasValue = Convert.ToDouble(rdr[md.Name]);
                             }
                             else
                             {
                                 md.MeasValue = 0;
                             }
-                            md.MesValue = (long)(cs.PlcMesDataScale * md.MeasValue);
+                            md.MesValue = (long)(md.MeasValue * lsMeas[i].Scale);
+                            md.Address = lsMeas[i].Address;
                             pd.DbMesVals.Add(md);
                         }
                         break;
                     }
                     rdr.Close();
+                }
+                errMsg = "";
+            }
+            catch (Exception ex)
+            {
+                errMsg = $"PLC: DB 데이터 로드 오류로 인한 중단: {ex.Message}";
+                return false;
+            }
+
+            // 설정 DB로 부터 업로드 아이템을 읽어온다.
+            try
+            {
+                var lsSettings = cs.DbSettings.CondItems.FindAll(x => x.Enable);
+                strConn = $@"Data Source={cs.DbSettings.Path};Read Only=True;";
+                using (SQLiteConnection conn = new SQLiteConnection(strConn))
+                {
+                    conn.Open();
+                    SQLiteCommand cmd;
+
+                    for (int i = 0; i < lsSettings.Count; i++)
+                    {
+                        if (pd.PlcModelNumber != lsSettings[i].ModelNumber)
+                        {
+                            continue;
+                        }
+
+                        string sql = $"SELECT * FROM sma_conditions WHERE Id = {lsSettings[i].Id} AND sample_id = {lsSettings[i].ModelNumber}";
+
+                        cmd = new SQLiteCommand(sql, conn);
+                        SQLiteDataReader rdr = cmd.ExecuteReader();
+                        while (rdr.Read())
+                        {
+                            PlcData.MesDatum md = new PlcData.MesDatum();
+                            md.Name = $"{lsSettings[i].Name} ({lsSettings[i].ModelNumber}.{lsSettings[i].Id})";
+                            bool res = lsSettings[i].ParseParam(rdr["parameters"].ToString(), out double paramVal, out errMsg);
+                            if (!res)
+                            {
+                                throw new Exception($"{errMsg}");
+                            }
+                            md.MeasValue = paramVal;
+                            md.MesValue = (long)(md.MeasValue * lsSettings[i].Scale);
+                            md.Address = lsSettings[i].Address;
+                            pd.DbMesVals.Add(md);
+                        }
+                        rdr.Close();
+                    }
                 }
                 errMsg = "";
                 return true;
@@ -754,7 +790,7 @@ namespace PlcComDlg
         /// <returns></returns>
         private static bool ReadLastIdFromDb(ComSettings cs, out long id, out string errMsg)
         {
-            string strConn = $@"Data Source={cs.DbPath};Read Only=True;";
+            string strConn = $@"Data Source={cs.DbMeas.Path};Read Only=True;";
             try
             {
                 using (SQLiteConnection conn = new SQLiteConnection(strConn))
@@ -789,19 +825,16 @@ namespace PlcComDlg
             errMsg = "";
             try
             {
-                // 2302: MES Data 업로드
-                int mesLen = plcData.DbMesVals.Count;
-                int[] data = new int[mesLen];
-                for (int i = 0; i < mesLen; i++)
+                // MES Data 업로드
+                for (int i = 0; i < plcData.DbMesVals.Count; i++)
                 {
-                    data[i] = (int)(plcData.DbMesVals[i].MeasValue * cs.PlcMesDataScale);
+                    if (!pb.WriteDWords(plcData.DbMesVals[i].Address, new int[] { (int)plcData.DbMesVals[i].MesValue }))
+                    {
+                        errMsg = pb.LastErrMsg;
+                        return false;
+                    }
                 }
 
-                if (!pb.WriteDWords(cs.PlcMesStartAddress, data))
-                {
-                    errMsg = pb.LastErrMsg;
-                    return false;
-                }
                 return true;
             }
             catch (Exception e)

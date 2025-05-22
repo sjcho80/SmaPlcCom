@@ -155,6 +155,11 @@ namespace PlcComDlg
             /// MES 업로드 값
             /// </summary>
             public long MesValue { get; set; }
+
+            /// <summary>
+            /// 주소
+            /// </summary>
+            public string Address { get; set; }
         }
 
         public CtrlFlags Flags = new CtrlFlags();

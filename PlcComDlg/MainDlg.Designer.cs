@@ -38,9 +38,9 @@
             this.BtnReload = new System.Windows.Forms.Button();
             this.PpgSettings = new System.Windows.Forms.PropertyGrid();
             this.LvwDb = new System.Windows.Forms.ListView();
+            this.clhAdd = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.ClhName = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.ClhDbVal = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-            this.clhAdd = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.ClhMesVal = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.TmrSmaCheck = new System.Windows.Forms.Timer(this.components);
             this.LblPlcCon = new System.Windows.Forms.Label();
@@ -48,28 +48,32 @@
             this.LblSmaApp = new System.Windows.Forms.Label();
             this.LblHeartBeat = new System.Windows.Forms.Label();
             this.GbxPlc = new System.Windows.Forms.GroupBox();
-            this.BtnMesDataUpload = new System.Windows.Forms.Button();
+            this.LblPlcAddHeartBeat = new System.Windows.Forms.Label();
             this.LvwProInfor = new System.Windows.Forms.ListView();
             this.columnHeader1 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.columnHeader2 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.columnHeader3 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.LblHeartBeatInterval = new System.Windows.Forms.Label();
+            this.label3 = new System.Windows.Forms.Label();
             this.LblModelNumber = new System.Windows.Forms.Label();
             this.LblMeasTime = new System.Windows.Forms.Label();
             this.LblMeasTimeVal = new System.Windows.Forms.Label();
+            this.BtnLblReadProInf = new System.Windows.Forms.Button();
+            this.BtnReadCustomNum = new System.Windows.Forms.Button();
+            this.BtnPlcReadModel = new System.Windows.Forms.Button();
+            this.LblPlcAddCustomNum = new System.Windows.Forms.Label();
+            this.LblModelAdd = new System.Windows.Forms.Label();
+            this.LblCustomNumVal = new System.Windows.Forms.Label();
+            this.LblModelNumVal = new System.Windows.Forms.Label();
+            this.LblHeartBeatIntVal = new System.Windows.Forms.Label();
+            this.BtnMesDataUpload = new System.Windows.Forms.Button();
             this.BtnAlarm = new System.Windows.Forms.Button();
             this.BtnNg = new System.Windows.Forms.Button();
-            this.BtnLblReadProInf = new System.Windows.Forms.Button();
-            this.BtnPlcReadModel = new System.Windows.Forms.Button();
             this.BtnBusy = new System.Windows.Forms.Button();
             this.BtnOk = new System.Windows.Forms.Button();
             this.BtnMeasFin = new System.Windows.Forms.Button();
-            this.LblModelAdd = new System.Windows.Forms.Label();
-            this.LblModelNumVal = new System.Windows.Forms.Label();
             this.BtnMeasReqResp = new System.Windows.Forms.Button();
             this.BtnPlcMeasReq = new System.Windows.Forms.Button();
-            this.LblHeartBeatIntVal = new System.Windows.Forms.Label();
-            this.LblPlcAddHeartBeat = new System.Windows.Forms.Label();
             this.LblPlcAddAlarm = new System.Windows.Forms.Label();
             this.LblPlcAddNg = new System.Windows.Forms.Label();
             this.LblPlcAddBusy = new System.Windows.Forms.Label();
@@ -103,10 +107,18 @@
             this.TbxLog = new System.Windows.Forms.TextBox();
             this.BtnClearLog = new System.Windows.Forms.Button();
             this.LblTcpAlmCode = new System.Windows.Forms.Label();
+            this.GbxPlcFlags = new System.Windows.Forms.GroupBox();
+            this.BtnCustomAlm = new System.Windows.Forms.Button();
+            this.LblPlcAddCustomAlm = new System.Windows.Forms.Label();
+            this.BtnCustomFin = new System.Windows.Forms.Button();
+            this.LblPlcAddCustomFin = new System.Windows.Forms.Label();
+            this.BtnCustomReq = new System.Windows.Forms.Button();
+            this.LblPlcAddCustomReq = new System.Windows.Forms.Label();
             this.SspMain.SuspendLayout();
             this.GbxPlc.SuspendLayout();
             this.groupBox2.SuspendLayout();
             this.GbxMesData.SuspendLayout();
+            this.GbxPlcFlags.SuspendLayout();
             this.SuspendLayout();
             // 
             // SspMain
@@ -118,7 +130,7 @@
             this.SspMain.Location = new System.Drawing.Point(0, 737);
             this.SspMain.Name = "SspMain";
             this.SspMain.Padding = new System.Windows.Forms.Padding(1, 0, 10, 0);
-            this.SspMain.Size = new System.Drawing.Size(1184, 24);
+            this.SspMain.Size = new System.Drawing.Size(1376, 24);
             this.SspMain.TabIndex = 8;
             this.SspMain.Text = "statusStrip1";
             // 
@@ -140,7 +152,7 @@
             // 
             this.BtnPlcStart.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.BtnPlcStart.Font = new System.Drawing.Font("굴림", 11F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
-            this.BtnPlcStart.Location = new System.Drawing.Point(1064, 520);
+            this.BtnPlcStart.Location = new System.Drawing.Point(1256, 536);
             this.BtnPlcStart.Margin = new System.Windows.Forms.Padding(2);
             this.BtnPlcStart.Name = "BtnPlcStart";
             this.BtnPlcStart.Size = new System.Drawing.Size(104, 24);
@@ -151,8 +163,9 @@
             // 
             // BtnSave
             // 
+            this.BtnSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.BtnSave.Font = new System.Drawing.Font("굴림", 11F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
-            this.BtnSave.Location = new System.Drawing.Point(1064, 496);
+            this.BtnSave.Location = new System.Drawing.Point(1256, 512);
             this.BtnSave.Margin = new System.Windows.Forms.Padding(2);
             this.BtnSave.Name = "BtnSave";
             this.BtnSave.Size = new System.Drawing.Size(104, 24);
@@ -163,8 +176,9 @@
             // 
             // BtnReload
             // 
+            this.BtnReload.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.BtnReload.Font = new System.Drawing.Font("굴림", 11F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
-            this.BtnReload.Location = new System.Drawing.Point(856, 496);
+            this.BtnReload.Location = new System.Drawing.Point(1048, 512);
             this.BtnReload.Margin = new System.Windows.Forms.Padding(2);
             this.BtnReload.Name = "BtnReload";
             this.BtnReload.Size = new System.Drawing.Size(104, 24);
@@ -177,10 +191,10 @@
             // 
             this.PpgSettings.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.PpgSettings.Location = new System.Drawing.Point(752, 16);
+            this.PpgSettings.Location = new System.Drawing.Point(944, 16);
             this.PpgSettings.Margin = new System.Windows.Forms.Padding(2);
             this.PpgSettings.Name = "PpgSettings";
-            this.PpgSettings.Size = new System.Drawing.Size(416, 448);
+            this.PpgSettings.Size = new System.Drawing.Size(416, 464);
             this.PpgSettings.TabIndex = 14;
             // 
             // LvwDb
@@ -197,10 +211,15 @@
             this.LvwDb.HideSelection = false;
             this.LvwDb.Location = new System.Drawing.Point(16, 80);
             this.LvwDb.Name = "LvwDb";
-            this.LvwDb.Size = new System.Drawing.Size(336, 256);
+            this.LvwDb.Size = new System.Drawing.Size(336, 440);
             this.LvwDb.TabIndex = 15;
             this.LvwDb.UseCompatibleStateImageBehavior = false;
             this.LvwDb.View = System.Windows.Forms.View.Details;
+            // 
+            // clhAdd
+            // 
+            this.clhAdd.Text = "Add.";
+            this.clhAdd.Width = 49;
             // 
             // ClhName
             // 
@@ -212,11 +231,6 @@
             this.ClhDbVal.Text = "Data";
             this.ClhDbVal.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
             this.ClhDbVal.Width = 86;
-            // 
-            // clhAdd
-            // 
-            this.clhAdd.Text = "Add.";
-            this.clhAdd.Width = 49;
             // 
             // ClhMesVal
             // 
@@ -268,7 +282,7 @@
             // 
             this.LblHeartBeat.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.LblHeartBeat.Font = new System.Drawing.Font("굴림", 11F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
-            this.LblHeartBeat.Location = new System.Drawing.Point(184, 296);
+            this.LblHeartBeat.Location = new System.Drawing.Point(16, 96);
             this.LblHeartBeat.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.LblHeartBeat.Name = "LblHeartBeat";
             this.LblHeartBeat.Size = new System.Drawing.Size(168, 24);
@@ -278,53 +292,42 @@
             // 
             // GbxPlc
             // 
-            this.GbxPlc.Controls.Add(this.BtnMesDataUpload);
+            this.GbxPlc.Controls.Add(this.LblPlcAddHeartBeat);
+            this.GbxPlc.Controls.Add(this.LblHeartBeat);
             this.GbxPlc.Controls.Add(this.LvwProInfor);
             this.GbxPlc.Controls.Add(this.LblPlcCon);
             this.GbxPlc.Controls.Add(this.LblHeartBeatInterval);
+            this.GbxPlc.Controls.Add(this.label3);
             this.GbxPlc.Controls.Add(this.LblModelNumber);
             this.GbxPlc.Controls.Add(this.LblMeasTime);
             this.GbxPlc.Controls.Add(this.LblMeasTimeVal);
-            this.GbxPlc.Controls.Add(this.BtnAlarm);
-            this.GbxPlc.Controls.Add(this.BtnNg);
             this.GbxPlc.Controls.Add(this.BtnLblReadProInf);
+            this.GbxPlc.Controls.Add(this.BtnReadCustomNum);
             this.GbxPlc.Controls.Add(this.BtnPlcReadModel);
-            this.GbxPlc.Controls.Add(this.BtnBusy);
-            this.GbxPlc.Controls.Add(this.BtnOk);
-            this.GbxPlc.Controls.Add(this.BtnMeasFin);
+            this.GbxPlc.Controls.Add(this.LblPlcAddCustomNum);
             this.GbxPlc.Controls.Add(this.LblModelAdd);
+            this.GbxPlc.Controls.Add(this.LblCustomNumVal);
             this.GbxPlc.Controls.Add(this.LblModelNumVal);
-            this.GbxPlc.Controls.Add(this.BtnMeasReqResp);
-            this.GbxPlc.Controls.Add(this.BtnPlcMeasReq);
             this.GbxPlc.Controls.Add(this.LblHeartBeatIntVal);
-            this.GbxPlc.Controls.Add(this.LblPlcAddHeartBeat);
-            this.GbxPlc.Controls.Add(this.LblPlcAddAlarm);
-            this.GbxPlc.Controls.Add(this.LblHeartBeat);
-            this.GbxPlc.Controls.Add(this.LblPlcAddNg);
-            this.GbxPlc.Controls.Add(this.LblPlcAddBusy);
-            this.GbxPlc.Controls.Add(this.LblPlcAddMeasFin);
-            this.GbxPlc.Controls.Add(this.LblPlcAddOk);
-            this.GbxPlc.Controls.Add(this.LblPlcAddMeasReqResp);
-            this.GbxPlc.Controls.Add(this.LblPlcAddMeasReq);
-            this.GbxPlc.Location = new System.Drawing.Point(384, 8);
+            this.GbxPlc.Location = new System.Drawing.Point(16, 192);
             this.GbxPlc.Margin = new System.Windows.Forms.Padding(2);
             this.GbxPlc.Name = "GbxPlc";
             this.GbxPlc.Padding = new System.Windows.Forms.Padding(2);
-            this.GbxPlc.Size = new System.Drawing.Size(360, 544);
+            this.GbxPlc.Size = new System.Drawing.Size(360, 376);
             this.GbxPlc.TabIndex = 18;
             this.GbxPlc.TabStop = false;
             this.GbxPlc.Text = "PLC";
             // 
-            // BtnMesDataUpload
+            // LblPlcAddHeartBeat
             // 
-            this.BtnMesDataUpload.Font = new System.Drawing.Font("굴림", 11F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
-            this.BtnMesDataUpload.Location = new System.Drawing.Point(16, 504);
-            this.BtnMesDataUpload.Name = "BtnMesDataUpload";
-            this.BtnMesDataUpload.Size = new System.Drawing.Size(168, 24);
-            this.BtnMesDataUpload.TabIndex = 21;
-            this.BtnMesDataUpload.Text = "MES Upload";
-            this.BtnMesDataUpload.UseVisualStyleBackColor = true;
-            this.BtnMesDataUpload.Click += new System.EventHandler(this.BtnMesDataUpload_Click);
+            this.LblPlcAddHeartBeat.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.LblPlcAddHeartBeat.Location = new System.Drawing.Point(184, 96);
+            this.LblPlcAddHeartBeat.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.LblPlcAddHeartBeat.Name = "LblPlcAddHeartBeat";
+            this.LblPlcAddHeartBeat.Size = new System.Drawing.Size(168, 24);
+            this.LblPlcAddHeartBeat.TabIndex = 16;
+            this.LblPlcAddHeartBeat.Text = "-";
+            this.LblPlcAddHeartBeat.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // LvwProInfor
             // 
@@ -333,7 +336,7 @@
             this.columnHeader2,
             this.columnHeader3});
             this.LvwProInfor.HideSelection = false;
-            this.LvwProInfor.Location = new System.Drawing.Point(16, 184);
+            this.LvwProInfor.Location = new System.Drawing.Point(16, 208);
             this.LvwProInfor.Name = "LvwProInfor";
             this.LvwProInfor.Size = new System.Drawing.Size(336, 104);
             this.LvwProInfor.TabIndex = 17;
@@ -365,11 +368,23 @@
             this.LblHeartBeatInterval.Text = "Update";
             this.LblHeartBeatInterval.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
+            // label3
+            // 
+            this.label3.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.label3.Font = new System.Drawing.Font("굴림", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
+            this.label3.Location = new System.Drawing.Point(16, 344);
+            this.label3.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.label3.Name = "label3";
+            this.label3.Size = new System.Drawing.Size(168, 24);
+            this.label3.TabIndex = 20;
+            this.label3.Text = "Custom number";
+            this.label3.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
             // LblModelNumber
             // 
             this.LblModelNumber.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.LblModelNumber.Font = new System.Drawing.Font("굴림", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
-            this.LblModelNumber.Location = new System.Drawing.Point(16, 128);
+            this.LblModelNumber.Location = new System.Drawing.Point(16, 152);
             this.LblModelNumber.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.LblModelNumber.Name = "LblModelNumber";
             this.LblModelNumber.Size = new System.Drawing.Size(168, 24);
@@ -400,34 +415,10 @@
             this.LblMeasTimeVal.TabIndex = 19;
             this.LblMeasTimeVal.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             // 
-            // BtnAlarm
-            // 
-            this.BtnAlarm.Font = new System.Drawing.Font("굴림", 11F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
-            this.BtnAlarm.Location = new System.Drawing.Point(184, 448);
-            this.BtnAlarm.Margin = new System.Windows.Forms.Padding(2);
-            this.BtnAlarm.Name = "BtnAlarm";
-            this.BtnAlarm.Size = new System.Drawing.Size(168, 24);
-            this.BtnAlarm.TabIndex = 17;
-            this.BtnAlarm.Text = "ALARM";
-            this.BtnAlarm.UseVisualStyleBackColor = true;
-            this.BtnAlarm.Click += new System.EventHandler(this.BtnAlarm_Click);
-            // 
-            // BtnNg
-            // 
-            this.BtnNg.Font = new System.Drawing.Font("굴림", 11F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
-            this.BtnNg.Location = new System.Drawing.Point(184, 400);
-            this.BtnNg.Margin = new System.Windows.Forms.Padding(2);
-            this.BtnNg.Name = "BtnNg";
-            this.BtnNg.Size = new System.Drawing.Size(168, 24);
-            this.BtnNg.TabIndex = 17;
-            this.BtnNg.Text = "NG";
-            this.BtnNg.UseVisualStyleBackColor = true;
-            this.BtnNg.Click += new System.EventHandler(this.BtnNg_Click);
-            // 
             // BtnLblReadProInf
             // 
             this.BtnLblReadProInf.Font = new System.Drawing.Font("굴림", 11.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
-            this.BtnLblReadProInf.Location = new System.Drawing.Point(16, 160);
+            this.BtnLblReadProInf.Location = new System.Drawing.Point(16, 184);
             this.BtnLblReadProInf.Margin = new System.Windows.Forms.Padding(2);
             this.BtnLblReadProInf.Name = "BtnLblReadProInf";
             this.BtnLblReadProInf.Size = new System.Drawing.Size(336, 24);
@@ -436,58 +427,45 @@
             this.BtnLblReadProInf.UseVisualStyleBackColor = true;
             this.BtnLblReadProInf.Click += new System.EventHandler(this.BtnLblReadProdInfor_Click);
             // 
+            // BtnReadCustomNum
+            // 
+            this.BtnReadCustomNum.Font = new System.Drawing.Font("굴림", 11.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
+            this.BtnReadCustomNum.Location = new System.Drawing.Point(16, 320);
+            this.BtnReadCustomNum.Margin = new System.Windows.Forms.Padding(2);
+            this.BtnReadCustomNum.Name = "BtnReadCustomNum";
+            this.BtnReadCustomNum.Size = new System.Drawing.Size(168, 24);
+            this.BtnReadCustomNum.TabIndex = 17;
+            this.BtnReadCustomNum.Text = "Read custom";
+            this.BtnReadCustomNum.UseVisualStyleBackColor = true;
+            this.BtnReadCustomNum.Click += new System.EventHandler(this.BtnReadCustomNum_Click);
+            // 
             // BtnPlcReadModel
             // 
             this.BtnPlcReadModel.Font = new System.Drawing.Font("굴림", 11.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
-            this.BtnPlcReadModel.Location = new System.Drawing.Point(16, 104);
+            this.BtnPlcReadModel.Location = new System.Drawing.Point(16, 128);
             this.BtnPlcReadModel.Margin = new System.Windows.Forms.Padding(2);
             this.BtnPlcReadModel.Name = "BtnPlcReadModel";
             this.BtnPlcReadModel.Size = new System.Drawing.Size(168, 24);
             this.BtnPlcReadModel.TabIndex = 17;
-            this.BtnPlcReadModel.Text = "MODEL";
+            this.BtnPlcReadModel.Text = "Read model";
             this.BtnPlcReadModel.UseVisualStyleBackColor = true;
             this.BtnPlcReadModel.Click += new System.EventHandler(this.BtnPlcReadModel_Click);
             // 
-            // BtnBusy
+            // LblPlcAddCustomNum
             // 
-            this.BtnBusy.Font = new System.Drawing.Font("굴림", 11F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
-            this.BtnBusy.Location = new System.Drawing.Point(16, 448);
-            this.BtnBusy.Margin = new System.Windows.Forms.Padding(2);
-            this.BtnBusy.Name = "BtnBusy";
-            this.BtnBusy.Size = new System.Drawing.Size(168, 24);
-            this.BtnBusy.TabIndex = 17;
-            this.BtnBusy.Text = "BUSY";
-            this.BtnBusy.UseVisualStyleBackColor = true;
-            this.BtnBusy.Click += new System.EventHandler(this.BtnBusy_Click);
-            // 
-            // BtnOk
-            // 
-            this.BtnOk.Font = new System.Drawing.Font("굴림", 11F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
-            this.BtnOk.Location = new System.Drawing.Point(16, 400);
-            this.BtnOk.Margin = new System.Windows.Forms.Padding(2);
-            this.BtnOk.Name = "BtnOk";
-            this.BtnOk.Size = new System.Drawing.Size(168, 24);
-            this.BtnOk.TabIndex = 17;
-            this.BtnOk.Text = "OK";
-            this.BtnOk.UseVisualStyleBackColor = true;
-            this.BtnOk.Click += new System.EventHandler(this.BtnOk_Click);
-            // 
-            // BtnMeasFin
-            // 
-            this.BtnMeasFin.Font = new System.Drawing.Font("굴림", 11F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
-            this.BtnMeasFin.Location = new System.Drawing.Point(184, 352);
-            this.BtnMeasFin.Margin = new System.Windows.Forms.Padding(2);
-            this.BtnMeasFin.Name = "BtnMeasFin";
-            this.BtnMeasFin.Size = new System.Drawing.Size(168, 24);
-            this.BtnMeasFin.TabIndex = 17;
-            this.BtnMeasFin.Text = "MEAS FIN.";
-            this.BtnMeasFin.UseVisualStyleBackColor = true;
-            this.BtnMeasFin.Click += new System.EventHandler(this.BtnMeasFin_Click);
+            this.LblPlcAddCustomNum.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.LblPlcAddCustomNum.Location = new System.Drawing.Point(184, 320);
+            this.LblPlcAddCustomNum.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.LblPlcAddCustomNum.Name = "LblPlcAddCustomNum";
+            this.LblPlcAddCustomNum.Size = new System.Drawing.Size(168, 24);
+            this.LblPlcAddCustomNum.TabIndex = 16;
+            this.LblPlcAddCustomNum.Text = "-";
+            this.LblPlcAddCustomNum.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // LblModelAdd
             // 
             this.LblModelAdd.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.LblModelAdd.Location = new System.Drawing.Point(184, 104);
+            this.LblModelAdd.Location = new System.Drawing.Point(184, 128);
             this.LblModelAdd.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.LblModelAdd.Name = "LblModelAdd";
             this.LblModelAdd.Size = new System.Drawing.Size(168, 24);
@@ -495,41 +473,29 @@
             this.LblModelAdd.Text = "-";
             this.LblModelAdd.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
+            // LblCustomNumVal
+            // 
+            this.LblCustomNumVal.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.LblCustomNumVal.Font = new System.Drawing.Font("굴림", 11F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
+            this.LblCustomNumVal.Location = new System.Drawing.Point(184, 344);
+            this.LblCustomNumVal.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.LblCustomNumVal.Name = "LblCustomNumVal";
+            this.LblCustomNumVal.Size = new System.Drawing.Size(168, 24);
+            this.LblCustomNumVal.TabIndex = 16;
+            this.LblCustomNumVal.Text = "0";
+            this.LblCustomNumVal.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
             // LblModelNumVal
             // 
             this.LblModelNumVal.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.LblModelNumVal.Font = new System.Drawing.Font("굴림", 11F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
-            this.LblModelNumVal.Location = new System.Drawing.Point(184, 128);
+            this.LblModelNumVal.Location = new System.Drawing.Point(184, 152);
             this.LblModelNumVal.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.LblModelNumVal.Name = "LblModelNumVal";
             this.LblModelNumVal.Size = new System.Drawing.Size(168, 24);
             this.LblModelNumVal.TabIndex = 16;
             this.LblModelNumVal.Text = "0";
             this.LblModelNumVal.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            // 
-            // BtnMeasReqResp
-            // 
-            this.BtnMeasReqResp.Font = new System.Drawing.Font("굴림", 11F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
-            this.BtnMeasReqResp.Location = new System.Drawing.Point(16, 352);
-            this.BtnMeasReqResp.Margin = new System.Windows.Forms.Padding(2);
-            this.BtnMeasReqResp.Name = "BtnMeasReqResp";
-            this.BtnMeasReqResp.Size = new System.Drawing.Size(168, 24);
-            this.BtnMeasReqResp.TabIndex = 17;
-            this.BtnMeasReqResp.Text = "MEAS RESP.";
-            this.BtnMeasReqResp.UseVisualStyleBackColor = true;
-            this.BtnMeasReqResp.Click += new System.EventHandler(this.BtnMeasReqResp_Click);
-            // 
-            // BtnPlcMeasReq
-            // 
-            this.BtnPlcMeasReq.Font = new System.Drawing.Font("굴림", 11F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
-            this.BtnPlcMeasReq.Location = new System.Drawing.Point(16, 296);
-            this.BtnPlcMeasReq.Margin = new System.Windows.Forms.Padding(2);
-            this.BtnPlcMeasReq.Name = "BtnPlcMeasReq";
-            this.BtnPlcMeasReq.Size = new System.Drawing.Size(168, 24);
-            this.BtnPlcMeasReq.TabIndex = 17;
-            this.BtnPlcMeasReq.Text = "MEAS REQ.";
-            this.BtnPlcMeasReq.UseVisualStyleBackColor = true;
-            this.BtnPlcMeasReq.Click += new System.EventHandler(this.BtnPlcMeasReq_Click);
             // 
             // LblHeartBeatIntVal
             // 
@@ -542,21 +508,105 @@
             this.LblHeartBeatIntVal.TabIndex = 16;
             this.LblHeartBeatIntVal.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             // 
-            // LblPlcAddHeartBeat
+            // BtnMesDataUpload
             // 
-            this.LblPlcAddHeartBeat.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.LblPlcAddHeartBeat.Location = new System.Drawing.Point(184, 320);
-            this.LblPlcAddHeartBeat.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
-            this.LblPlcAddHeartBeat.Name = "LblPlcAddHeartBeat";
-            this.LblPlcAddHeartBeat.Size = new System.Drawing.Size(168, 24);
-            this.LblPlcAddHeartBeat.TabIndex = 16;
-            this.LblPlcAddHeartBeat.Text = "-";
-            this.LblPlcAddHeartBeat.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.BtnMesDataUpload.Font = new System.Drawing.Font("굴림", 11F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
+            this.BtnMesDataUpload.Location = new System.Drawing.Point(16, 528);
+            this.BtnMesDataUpload.Name = "BtnMesDataUpload";
+            this.BtnMesDataUpload.Size = new System.Drawing.Size(336, 24);
+            this.BtnMesDataUpload.TabIndex = 21;
+            this.BtnMesDataUpload.Text = "MES Upload";
+            this.BtnMesDataUpload.UseVisualStyleBackColor = true;
+            this.BtnMesDataUpload.Click += new System.EventHandler(this.BtnMesDataUpload_Click);
+            // 
+            // BtnAlarm
+            // 
+            this.BtnAlarm.Font = new System.Drawing.Font("굴림", 11F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
+            this.BtnAlarm.Location = new System.Drawing.Point(8, 288);
+            this.BtnAlarm.Margin = new System.Windows.Forms.Padding(2);
+            this.BtnAlarm.Name = "BtnAlarm";
+            this.BtnAlarm.Size = new System.Drawing.Size(168, 24);
+            this.BtnAlarm.TabIndex = 17;
+            this.BtnAlarm.Text = "ALARM";
+            this.BtnAlarm.UseVisualStyleBackColor = true;
+            this.BtnAlarm.Click += new System.EventHandler(this.BtnAlarm_Click);
+            // 
+            // BtnNg
+            // 
+            this.BtnNg.Font = new System.Drawing.Font("굴림", 11F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
+            this.BtnNg.Location = new System.Drawing.Point(8, 240);
+            this.BtnNg.Margin = new System.Windows.Forms.Padding(2);
+            this.BtnNg.Name = "BtnNg";
+            this.BtnNg.Size = new System.Drawing.Size(168, 24);
+            this.BtnNg.TabIndex = 17;
+            this.BtnNg.Text = "NG";
+            this.BtnNg.UseVisualStyleBackColor = true;
+            this.BtnNg.Click += new System.EventHandler(this.BtnNg_Click);
+            // 
+            // BtnBusy
+            // 
+            this.BtnBusy.Font = new System.Drawing.Font("굴림", 11F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
+            this.BtnBusy.Location = new System.Drawing.Point(8, 24);
+            this.BtnBusy.Margin = new System.Windows.Forms.Padding(2);
+            this.BtnBusy.Name = "BtnBusy";
+            this.BtnBusy.Size = new System.Drawing.Size(168, 24);
+            this.BtnBusy.TabIndex = 17;
+            this.BtnBusy.Text = "BUSY";
+            this.BtnBusy.UseVisualStyleBackColor = true;
+            this.BtnBusy.Click += new System.EventHandler(this.BtnBusy_Click);
+            // 
+            // BtnOk
+            // 
+            this.BtnOk.Font = new System.Drawing.Font("굴림", 11F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
+            this.BtnOk.Location = new System.Drawing.Point(8, 192);
+            this.BtnOk.Margin = new System.Windows.Forms.Padding(2);
+            this.BtnOk.Name = "BtnOk";
+            this.BtnOk.Size = new System.Drawing.Size(168, 24);
+            this.BtnOk.TabIndex = 17;
+            this.BtnOk.Text = "OK";
+            this.BtnOk.UseVisualStyleBackColor = true;
+            this.BtnOk.Click += new System.EventHandler(this.BtnOk_Click);
+            // 
+            // BtnMeasFin
+            // 
+            this.BtnMeasFin.Font = new System.Drawing.Font("굴림", 11F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
+            this.BtnMeasFin.Location = new System.Drawing.Point(8, 336);
+            this.BtnMeasFin.Margin = new System.Windows.Forms.Padding(2);
+            this.BtnMeasFin.Name = "BtnMeasFin";
+            this.BtnMeasFin.Size = new System.Drawing.Size(168, 24);
+            this.BtnMeasFin.TabIndex = 17;
+            this.BtnMeasFin.Text = "MEAS FIN.";
+            this.BtnMeasFin.UseVisualStyleBackColor = true;
+            this.BtnMeasFin.Click += new System.EventHandler(this.BtnMeasFin_Click);
+            // 
+            // BtnMeasReqResp
+            // 
+            this.BtnMeasReqResp.Font = new System.Drawing.Font("굴림", 11F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
+            this.BtnMeasReqResp.Location = new System.Drawing.Point(8, 144);
+            this.BtnMeasReqResp.Margin = new System.Windows.Forms.Padding(2);
+            this.BtnMeasReqResp.Name = "BtnMeasReqResp";
+            this.BtnMeasReqResp.Size = new System.Drawing.Size(168, 24);
+            this.BtnMeasReqResp.TabIndex = 17;
+            this.BtnMeasReqResp.Text = "MEAS RESP.";
+            this.BtnMeasReqResp.UseVisualStyleBackColor = true;
+            this.BtnMeasReqResp.Click += new System.EventHandler(this.BtnMeasReqResp_Click);
+            // 
+            // BtnPlcMeasReq
+            // 
+            this.BtnPlcMeasReq.Font = new System.Drawing.Font("굴림", 11F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
+            this.BtnPlcMeasReq.Location = new System.Drawing.Point(8, 96);
+            this.BtnPlcMeasReq.Margin = new System.Windows.Forms.Padding(2);
+            this.BtnPlcMeasReq.Name = "BtnPlcMeasReq";
+            this.BtnPlcMeasReq.Size = new System.Drawing.Size(168, 24);
+            this.BtnPlcMeasReq.TabIndex = 17;
+            this.BtnPlcMeasReq.Text = "MEAS REQ.";
+            this.BtnPlcMeasReq.UseVisualStyleBackColor = true;
+            this.BtnPlcMeasReq.Click += new System.EventHandler(this.BtnPlcMeasReq_Click);
             // 
             // LblPlcAddAlarm
             // 
             this.LblPlcAddAlarm.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.LblPlcAddAlarm.Location = new System.Drawing.Point(184, 472);
+            this.LblPlcAddAlarm.Location = new System.Drawing.Point(8, 312);
             this.LblPlcAddAlarm.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.LblPlcAddAlarm.Name = "LblPlcAddAlarm";
             this.LblPlcAddAlarm.Size = new System.Drawing.Size(168, 24);
@@ -567,7 +617,7 @@
             // LblPlcAddNg
             // 
             this.LblPlcAddNg.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.LblPlcAddNg.Location = new System.Drawing.Point(184, 424);
+            this.LblPlcAddNg.Location = new System.Drawing.Point(8, 264);
             this.LblPlcAddNg.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.LblPlcAddNg.Name = "LblPlcAddNg";
             this.LblPlcAddNg.Size = new System.Drawing.Size(168, 24);
@@ -578,7 +628,7 @@
             // LblPlcAddBusy
             // 
             this.LblPlcAddBusy.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.LblPlcAddBusy.Location = new System.Drawing.Point(16, 472);
+            this.LblPlcAddBusy.Location = new System.Drawing.Point(8, 48);
             this.LblPlcAddBusy.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.LblPlcAddBusy.Name = "LblPlcAddBusy";
             this.LblPlcAddBusy.Size = new System.Drawing.Size(168, 24);
@@ -589,7 +639,7 @@
             // LblPlcAddMeasFin
             // 
             this.LblPlcAddMeasFin.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.LblPlcAddMeasFin.Location = new System.Drawing.Point(184, 376);
+            this.LblPlcAddMeasFin.Location = new System.Drawing.Point(8, 360);
             this.LblPlcAddMeasFin.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.LblPlcAddMeasFin.Name = "LblPlcAddMeasFin";
             this.LblPlcAddMeasFin.Size = new System.Drawing.Size(168, 24);
@@ -600,7 +650,7 @@
             // LblPlcAddOk
             // 
             this.LblPlcAddOk.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.LblPlcAddOk.Location = new System.Drawing.Point(16, 424);
+            this.LblPlcAddOk.Location = new System.Drawing.Point(8, 216);
             this.LblPlcAddOk.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.LblPlcAddOk.Name = "LblPlcAddOk";
             this.LblPlcAddOk.Size = new System.Drawing.Size(168, 24);
@@ -611,7 +661,7 @@
             // LblPlcAddMeasReqResp
             // 
             this.LblPlcAddMeasReqResp.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.LblPlcAddMeasReqResp.Location = new System.Drawing.Point(16, 376);
+            this.LblPlcAddMeasReqResp.Location = new System.Drawing.Point(8, 168);
             this.LblPlcAddMeasReqResp.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.LblPlcAddMeasReqResp.Name = "LblPlcAddMeasReqResp";
             this.LblPlcAddMeasReqResp.Size = new System.Drawing.Size(168, 24);
@@ -622,7 +672,7 @@
             // LblPlcAddMeasReq
             // 
             this.LblPlcAddMeasReq.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.LblPlcAddMeasReq.Location = new System.Drawing.Point(16, 320);
+            this.LblPlcAddMeasReq.Location = new System.Drawing.Point(8, 120);
             this.LblPlcAddMeasReq.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.LblPlcAddMeasReq.Name = "LblPlcAddMeasReq";
             this.LblPlcAddMeasReq.Size = new System.Drawing.Size(168, 24);
@@ -632,9 +682,10 @@
             // 
             // LblPlcAlmCode
             // 
+            this.LblPlcAlmCode.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.LblPlcAlmCode.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.LblPlcAlmCode.Font = new System.Drawing.Font("굴림", 11F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
-            this.LblPlcAlmCode.Location = new System.Drawing.Point(752, 472);
+            this.LblPlcAlmCode.Location = new System.Drawing.Point(944, 488);
             this.LblPlcAlmCode.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.LblPlcAlmCode.Name = "LblPlcAlmCode";
             this.LblPlcAlmCode.Size = new System.Drawing.Size(208, 24);
@@ -809,6 +860,7 @@
             // 
             // GbxMesData
             // 
+            this.GbxMesData.Controls.Add(this.BtnMesDataUpload);
             this.GbxMesData.Controls.Add(this.LblMesOkVal);
             this.GbxMesData.Controls.Add(this.LblFailedIdVal);
             this.GbxMesData.Controls.Add(this.LblFailedId);
@@ -816,11 +868,11 @@
             this.GbxMesData.Controls.Add(this.LblDbId);
             this.GbxMesData.Controls.Add(this.LblDbIdVal);
             this.GbxMesData.Controls.Add(this.LvwDb);
-            this.GbxMesData.Location = new System.Drawing.Point(16, 200);
+            this.GbxMesData.Location = new System.Drawing.Point(384, 8);
             this.GbxMesData.Margin = new System.Windows.Forms.Padding(2);
             this.GbxMesData.Name = "GbxMesData";
             this.GbxMesData.Padding = new System.Windows.Forms.Padding(2);
-            this.GbxMesData.Size = new System.Drawing.Size(360, 352);
+            this.GbxMesData.Size = new System.Drawing.Size(360, 560);
             this.GbxMesData.TabIndex = 19;
             this.GbxMesData.TabStop = false;
             this.GbxMesData.Text = "MES";
@@ -875,8 +927,9 @@
             // 
             // BtnFolderLog
             // 
+            this.BtnFolderLog.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.BtnFolderLog.Font = new System.Drawing.Font("굴림", 11F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
-            this.BtnFolderLog.Location = new System.Drawing.Point(752, 496);
+            this.BtnFolderLog.Location = new System.Drawing.Point(944, 512);
             this.BtnFolderLog.Margin = new System.Windows.Forms.Padding(2);
             this.BtnFolderLog.Name = "BtnFolderLog";
             this.BtnFolderLog.Size = new System.Drawing.Size(104, 24);
@@ -887,8 +940,9 @@
             // 
             // BtnFolderDb
             // 
+            this.BtnFolderDb.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.BtnFolderDb.Font = new System.Drawing.Font("굴림", 11F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
-            this.BtnFolderDb.Location = new System.Drawing.Point(960, 496);
+            this.BtnFolderDb.Location = new System.Drawing.Point(1152, 512);
             this.BtnFolderDb.Margin = new System.Windows.Forms.Padding(2);
             this.BtnFolderDb.Name = "BtnFolderDb";
             this.BtnFolderDb.Size = new System.Drawing.Size(104, 24);
@@ -899,8 +953,9 @@
             // 
             // BtnFolderSettings
             // 
+            this.BtnFolderSettings.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.BtnFolderSettings.Font = new System.Drawing.Font("굴림", 11F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
-            this.BtnFolderSettings.Location = new System.Drawing.Point(752, 520);
+            this.BtnFolderSettings.Location = new System.Drawing.Point(944, 536);
             this.BtnFolderSettings.Margin = new System.Windows.Forms.Padding(2);
             this.BtnFolderSettings.Name = "BtnFolderSettings";
             this.BtnFolderSettings.Size = new System.Drawing.Size(104, 24);
@@ -913,7 +968,7 @@
             // 
             this.BtnTcpStart.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.BtnTcpStart.Font = new System.Drawing.Font("굴림", 11F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
-            this.BtnTcpStart.Location = new System.Drawing.Point(960, 520);
+            this.BtnTcpStart.Location = new System.Drawing.Point(1152, 536);
             this.BtnTcpStart.Margin = new System.Windows.Forms.Padding(2);
             this.BtnTcpStart.Name = "BtnTcpStart";
             this.BtnTcpStart.Size = new System.Drawing.Size(104, 24);
@@ -927,18 +982,19 @@
             this.TbxLog.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.TbxLog.Location = new System.Drawing.Point(16, 560);
+            this.TbxLog.Location = new System.Drawing.Point(16, 576);
             this.TbxLog.Multiline = true;
             this.TbxLog.Name = "TbxLog";
             this.TbxLog.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.TbxLog.Size = new System.Drawing.Size(1152, 169);
+            this.TbxLog.Size = new System.Drawing.Size(1344, 153);
             this.TbxLog.TabIndex = 22;
             // 
             // BtnClearLog
             // 
+            this.BtnClearLog.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.BtnClearLog.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.BtnClearLog.Font = new System.Drawing.Font("굴림", 11F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
-            this.BtnClearLog.Location = new System.Drawing.Point(856, 520);
+            this.BtnClearLog.Location = new System.Drawing.Point(1048, 536);
             this.BtnClearLog.Margin = new System.Windows.Forms.Padding(2);
             this.BtnClearLog.Name = "BtnClearLog";
             this.BtnClearLog.Size = new System.Drawing.Size(104, 24);
@@ -949,9 +1005,10 @@
             // 
             // LblTcpAlmCode
             // 
+            this.LblTcpAlmCode.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.LblTcpAlmCode.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.LblTcpAlmCode.Font = new System.Drawing.Font("굴림", 11F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
-            this.LblTcpAlmCode.Location = new System.Drawing.Point(960, 472);
+            this.LblTcpAlmCode.Location = new System.Drawing.Point(1152, 488);
             this.LblTcpAlmCode.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.LblTcpAlmCode.Name = "LblTcpAlmCode";
             this.LblTcpAlmCode.Size = new System.Drawing.Size(208, 24);
@@ -960,11 +1017,110 @@
             this.LblTcpAlmCode.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.LblTcpAlmCode.Click += new System.EventHandler(this.LblTcpAlmCode_Click);
             // 
+            // GbxPlcFlags
+            // 
+            this.GbxPlcFlags.Controls.Add(this.BtnCustomAlm);
+            this.GbxPlcFlags.Controls.Add(this.LblPlcAddCustomAlm);
+            this.GbxPlcFlags.Controls.Add(this.BtnPlcMeasReq);
+            this.GbxPlcFlags.Controls.Add(this.LblPlcAddMeasReq);
+            this.GbxPlcFlags.Controls.Add(this.BtnMeasReqResp);
+            this.GbxPlcFlags.Controls.Add(this.LblPlcAddMeasReqResp);
+            this.GbxPlcFlags.Controls.Add(this.BtnCustomFin);
+            this.GbxPlcFlags.Controls.Add(this.LblPlcAddCustomFin);
+            this.GbxPlcFlags.Controls.Add(this.BtnMeasFin);
+            this.GbxPlcFlags.Controls.Add(this.BtnAlarm);
+            this.GbxPlcFlags.Controls.Add(this.LblPlcAddMeasFin);
+            this.GbxPlcFlags.Controls.Add(this.BtnNg);
+            this.GbxPlcFlags.Controls.Add(this.BtnBusy);
+            this.GbxPlcFlags.Controls.Add(this.LblPlcAddBusy);
+            this.GbxPlcFlags.Controls.Add(this.BtnOk);
+            this.GbxPlcFlags.Controls.Add(this.LblPlcAddAlarm);
+            this.GbxPlcFlags.Controls.Add(this.LblPlcAddOk);
+            this.GbxPlcFlags.Controls.Add(this.LblPlcAddNg);
+            this.GbxPlcFlags.Controls.Add(this.BtnCustomReq);
+            this.GbxPlcFlags.Controls.Add(this.LblPlcAddCustomReq);
+            this.GbxPlcFlags.Location = new System.Drawing.Point(752, 8);
+            this.GbxPlcFlags.Name = "GbxPlcFlags";
+            this.GbxPlcFlags.Size = new System.Drawing.Size(184, 560);
+            this.GbxPlcFlags.TabIndex = 23;
+            this.GbxPlcFlags.TabStop = false;
+            this.GbxPlcFlags.Text = "Flags";
+            // 
+            // BtnCustomAlm
+            // 
+            this.BtnCustomAlm.Font = new System.Drawing.Font("굴림", 11F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
+            this.BtnCustomAlm.Location = new System.Drawing.Point(8, 504);
+            this.BtnCustomAlm.Margin = new System.Windows.Forms.Padding(2);
+            this.BtnCustomAlm.Name = "BtnCustomAlm";
+            this.BtnCustomAlm.Size = new System.Drawing.Size(168, 24);
+            this.BtnCustomAlm.TabIndex = 19;
+            this.BtnCustomAlm.Text = "CUSTOM ALARM";
+            this.BtnCustomAlm.UseVisualStyleBackColor = true;
+            this.BtnCustomAlm.Click += new System.EventHandler(this.BtnCustomAlm_Click);
+            // 
+            // LblPlcAddCustomAlm
+            // 
+            this.LblPlcAddCustomAlm.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.LblPlcAddCustomAlm.Location = new System.Drawing.Point(8, 528);
+            this.LblPlcAddCustomAlm.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.LblPlcAddCustomAlm.Name = "LblPlcAddCustomAlm";
+            this.LblPlcAddCustomAlm.Size = new System.Drawing.Size(168, 24);
+            this.LblPlcAddCustomAlm.TabIndex = 18;
+            this.LblPlcAddCustomAlm.Text = "-";
+            this.LblPlcAddCustomAlm.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // BtnCustomFin
+            // 
+            this.BtnCustomFin.Font = new System.Drawing.Font("굴림", 11F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
+            this.BtnCustomFin.Location = new System.Drawing.Point(8, 456);
+            this.BtnCustomFin.Margin = new System.Windows.Forms.Padding(2);
+            this.BtnCustomFin.Name = "BtnCustomFin";
+            this.BtnCustomFin.Size = new System.Drawing.Size(168, 24);
+            this.BtnCustomFin.TabIndex = 19;
+            this.BtnCustomFin.Text = "CUSTOM FIN";
+            this.BtnCustomFin.UseVisualStyleBackColor = true;
+            this.BtnCustomFin.Click += new System.EventHandler(this.BtnCustomFin_Click);
+            // 
+            // LblPlcAddCustomFin
+            // 
+            this.LblPlcAddCustomFin.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.LblPlcAddCustomFin.Location = new System.Drawing.Point(8, 480);
+            this.LblPlcAddCustomFin.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.LblPlcAddCustomFin.Name = "LblPlcAddCustomFin";
+            this.LblPlcAddCustomFin.Size = new System.Drawing.Size(168, 24);
+            this.LblPlcAddCustomFin.TabIndex = 18;
+            this.LblPlcAddCustomFin.Text = "-";
+            this.LblPlcAddCustomFin.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // BtnCustomReq
+            // 
+            this.BtnCustomReq.Font = new System.Drawing.Font("굴림", 11F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
+            this.BtnCustomReq.Location = new System.Drawing.Point(8, 408);
+            this.BtnCustomReq.Margin = new System.Windows.Forms.Padding(2);
+            this.BtnCustomReq.Name = "BtnCustomReq";
+            this.BtnCustomReq.Size = new System.Drawing.Size(168, 24);
+            this.BtnCustomReq.TabIndex = 17;
+            this.BtnCustomReq.Text = "CUSTOM REQ.";
+            this.BtnCustomReq.UseVisualStyleBackColor = true;
+            this.BtnCustomReq.Click += new System.EventHandler(this.BtnCustomReq_Click);
+            // 
+            // LblPlcAddCustomReq
+            // 
+            this.LblPlcAddCustomReq.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.LblPlcAddCustomReq.Location = new System.Drawing.Point(8, 432);
+            this.LblPlcAddCustomReq.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.LblPlcAddCustomReq.Name = "LblPlcAddCustomReq";
+            this.LblPlcAddCustomReq.Size = new System.Drawing.Size(168, 24);
+            this.LblPlcAddCustomReq.TabIndex = 16;
+            this.LblPlcAddCustomReq.Text = "-";
+            this.LblPlcAddCustomReq.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
             // MainDlg
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1184, 761);
+            this.ClientSize = new System.Drawing.Size(1376, 761);
+            this.Controls.Add(this.GbxPlcFlags);
             this.Controls.Add(this.LblTcpAlmCode);
             this.Controls.Add(this.LblPlcAlmCode);
             this.Controls.Add(this.TbxLog);
@@ -992,6 +1148,7 @@
             this.GbxPlc.ResumeLayout(false);
             this.groupBox2.ResumeLayout(false);
             this.GbxMesData.ResumeLayout(false);
+            this.GbxPlcFlags.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -1071,6 +1228,17 @@
         private System.Windows.Forms.Button BtnMesDataUpload;
         private System.Windows.Forms.ColumnHeader clhAdd;
         private System.Windows.Forms.Label LblTcpAlmCode;
+        private System.Windows.Forms.Label label3;
+        private System.Windows.Forms.Button BtnReadCustomNum;
+        private System.Windows.Forms.Label LblPlcAddCustomNum;
+        private System.Windows.Forms.Label LblCustomNumVal;
+        private System.Windows.Forms.GroupBox GbxPlcFlags;
+        private System.Windows.Forms.Button BtnCustomAlm;
+        private System.Windows.Forms.Label LblPlcAddCustomAlm;
+        private System.Windows.Forms.Button BtnCustomFin;
+        private System.Windows.Forms.Label LblPlcAddCustomFin;
+        private System.Windows.Forms.Button BtnCustomReq;
+        private System.Windows.Forms.Label LblPlcAddCustomReq;
     }
 }
 
