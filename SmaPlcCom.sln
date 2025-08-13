@@ -7,6 +7,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PlcComDlg", "PlcComDlg\PlcC
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmaPlc", "SmaPlc\SmaPlc.csproj", "{DC9A787B-6715-427F-A142-42B48E4CAB6E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmaCtrl", "SmaCtrl\SmaCtrl.csproj", "{FED54C11-B07C-478E-BF8E-6ABAB349ED3C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmaAppFlux", "SmaAppFlux\SmaAppFlux.csproj", "{F8A021A4-EDCE-483C-BCCC-04B1C5742ED1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +25,14 @@ Global
 		{DC9A787B-6715-427F-A142-42B48E4CAB6E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DC9A787B-6715-427F-A142-42B48E4CAB6E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DC9A787B-6715-427F-A142-42B48E4CAB6E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FED54C11-B07C-478E-BF8E-6ABAB349ED3C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FED54C11-B07C-478E-BF8E-6ABAB349ED3C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FED54C11-B07C-478E-BF8E-6ABAB349ED3C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FED54C11-B07C-478E-BF8E-6ABAB349ED3C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F8A021A4-EDCE-483C-BCCC-04B1C5742ED1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F8A021A4-EDCE-483C-BCCC-04B1C5742ED1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F8A021A4-EDCE-483C-BCCC-04B1C5742ED1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F8A021A4-EDCE-483C-BCCC-04B1C5742ED1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

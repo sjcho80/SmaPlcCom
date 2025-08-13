@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -29,6 +30,10 @@ namespace SmaPlc
             /// Simens S7 통신
             /// </summary>
             SimensS7,
+            /// <summary>
+            /// LS XG Comm PLC
+            /// </summary>
+            LsXgComm,
         }
         #endregion
 
@@ -140,19 +145,6 @@ namespace SmaPlc
         /// 마지막 에러 메시지를 반환한다
         /// </summary>
         public string LastErrMsg { get { return _errMsg; } }
-
-        /// <summary>
-        /// 마지막 에러 코드를 반환한다
-        /// </summary>
-        public int LastErrCode { get { return _errCode; } }
         #endregion
-
-        /// <summary>
-        /// Constructor
-        /// </summary>
-        public PlcBase()
-        {
-
-        }
     }
 }

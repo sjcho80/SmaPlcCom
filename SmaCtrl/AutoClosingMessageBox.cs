@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace PlcComDlg
+namespace SmaCtrl
 {
     /// <summary>
     /// 자동 종료 메시지 박스 (인터넷 소스)

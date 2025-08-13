@@ -21,6 +21,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -63,14 +64,32 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="LsXGComm.cs" />
     <Compile Include="MelsecMxComponent.cs" />
     <Compile Include="MelsecMcProtocol.cs" />
+    <Compile Include="PlcFlags.cs" />
+    <Compile Include="PlcData.cs" />
+    <Compile Include="PlcMesData.cs" />
+    <Compile Include="PlcProdInfors.cs" />
+    <Compile Include="PlcSettings.cs" />
     <Compile Include="SiemensS7.cs" />
     <Compile Include="PlcBase.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="XGCommLib.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <COMReference Include="XGCommLib">
+      <Guid>{2CFF650C-6DF0-48AE-9B06-C8DD467E0CD3}</Guid>
+      <VersionMajor>1</VersionMajor>
+      <VersionMinor>0</VersionMinor>
+      <Lcid>0</Lcid>
+      <WrapperTool>tlbimp</WrapperTool>
+      <Isolated>False</Isolated>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </COMReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

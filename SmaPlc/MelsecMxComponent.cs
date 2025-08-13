@@ -13,10 +13,12 @@ namespace SmaPlc
     /// </summary>
     public class MelsecMxComponent : PlcBase
     {
+        #region 변수 선언
         /// <summary>
         /// PLC unit
         /// </summary>
         private ActUtlType _plc = null;
+        #endregion
 
         #region 통신 제어
         /// <summary>
@@ -255,7 +257,24 @@ namespace SmaPlc
         /// <returns></returns>
         public override bool WriteDWord(string add, int data)
         {
-            return WriteDevice(add, data);
+            try
+            {
+                int[] d16 = new int[2]; // 32비트->16비트 데이터로 변경하여 전송한다
+                d16[0] = data & 0xFFFF;         // udata
+                d16[1] = (data >> 16) & 0xFFFF; // ldata
+                _errCode = _plc.WriteDeviceBlock(add, d16.Length, ref d16[0]);
+                if (_errCode != 0)
+                {
+                    _errMsg = $"WriteDWord failure: start address={add}, return code={_errCode}";
+                    return false;
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _errMsg = ex.Message;
+                return false;
+            }
         }
 
         /// <summary>

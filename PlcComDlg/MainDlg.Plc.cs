@@ -20,11 +20,12 @@ using System.Windows.Forms.Design;
 using System.Xml.Serialization;
 
 using SmaPlc;
+using SmaCtrl;
 
 namespace PlcComDlg
 {
     /// <summary>
-    /// 2000.SMA-PLC 통신 프로그램
+    /// 2. SMA-PLC 통신 프로그램
     /// </summary>
     public partial class MainDlg : Form
     {
@@ -39,23 +40,32 @@ namespace PlcComDlg
             /// </summary>
             MesUpload,
             /// <summary>
-            /// 모델 넘버 읽음
+            /// MES 클리어
             /// </summary>
-            ReadModelNumber,
+            MesClear,
             /// <summary>
             /// 제품 정보 읽음
             /// </summary>
             ReadProductInfor,
         }
 
-        private long _lastDbId = -1;
         #endregion
 
         #region 변수선언
         /// <summary>
         /// Plc 업데이트 이벤트
         /// </summary>
-        private ConcurrentQueue<PlcGuiEvents> _plcGuiUpdateQue = new ConcurrentQueue<PlcGuiEvents>();
+        private ConcurrentQueue<PlcGuiEvents> _plcGuiUpdateQue { get; set; } = new ConcurrentQueue<PlcGuiEvents>();
+
+        /// <summary>
+        /// 마지막 측정 id
+        /// </summary>
+        private long _lastDbId { get; set; } = -1;
+
+        /// <summary>
+        /// 수동 측정 시작
+        /// </summary>
+        private bool _manualMeasTrigger { get; set; } = false;
         #endregion
 
         #region 21000.Plc.Worker
@@ -66,13 +76,15 @@ namespace PlcComDlg
         /// <param name="e"></param>
         private void Worker_PlcDoWork(object sender, DoWorkEventArgs e)
         {
+            string errMsg;
+
             #region 21100.Plc.Worker.초기화
             PlcOpModes plcMode = PlcOpModes.Connecting;
             long lastDbId = -1;
 
             // PLC 제어 오브젝트 생성
             PlcBase pb;
-            switch (_cs.PlcType)
+            switch (_cs.PlcSettings.PlcType)
             {
                 case PlcBase.PlcTypes.MelsecMxComponent:
                     pb = new MelsecMxComponent();
@@ -83,8 +95,16 @@ namespace PlcComDlg
                 case PlcBase.PlcTypes.MelsecMcProtocol:
                     pb = new MelsecMcProtocol();
                     break;
+                case PlcBase.PlcTypes.LsXgComm:
+                    pb = new LsXGComm();
+                    break;
                 default:
-                        throw new NotImplementedException();
+                    throw new NotImplementedException();
+            }
+            if (!pb.ConvertOpenParameter(_cs.PlcSettings.ConnectionParam, out object item))
+            {
+                InsertLog("Fail to parse the open parameter", LogMsg.Sources.PLC, 21200, pb.LastErrMsg);
+                return;
             }
             #endregion
 
@@ -100,45 +120,51 @@ namespace PlcComDlg
                 // 21200.Plc.Woker.제어-연결
                 if (plcMode == PlcOpModes.Connecting)
                 {
-                    if (!pb.ConvertOpenParameter(_cs.PlcConnectionParam, out object item))
-                    {
-                        InsertLog("Fail to parse the open parameter", LogMsg.Sources.PLC, 21200, pb.LastErrMsg);
-                        break;
-                    }
-
                     // 일정한 시간 간격으로 연결을 시도한다
-                    if (pb.Open(_cs.PlcConnectionParam))
+                    if (pb.Open(_cs.PlcSettings.ConnectionParam))
                     {
-                        bool res = pb.WriteBit(_cs.PlcAddBusyBit, false)
-                            & pb.WriteBit(_cs.PlcAddMeasFinBit, false)
-                            & pb.WriteBit(_cs.PlcAddOkBit, false)
-                            & pb.WriteBit(_cs.PlcAddNgBit, false)
-                            & pb.WriteBit(_cs.PlcAddMeasReqRespBit, false);
+                        bool res = pb.WriteBit(_pd.BusyBit.Address, false)
+                            & pb.WriteBit(_pd.MeasFinBit.Address, false)
+                            & pb.WriteBit(_pd.OkBit.Address, false)
+                            & pb.WriteBit(_pd.NgBit.Address, false)
+                            & pb.WriteBit(_pd.MeasReqRespBit.Address, false);
                         if (res)
                         {
                             plcMode = PlcOpModes.Connected;
+                            _pd.InitFlags();
                             InsertLog("Connected", LogMsg.Sources.PLC);
                         }
                     }
                     else
                     {
-                        Thread.Sleep(_cs.PlcConnRetryInterval);
+                        Thread.Sleep(_cs.PlcSettings.ConnRetryInterval);
                     }
                 }
                 // 21300.Plc.Woker.제어-측정요청 검출
                 else if (plcMode == PlcOpModes.Connected)
                 {
-                    // 플래그 읽기
-                    if (!ReadFlag(pb, _cs, ref _plcData.Flags))
+                    // 플래그/모델넘버 읽기
+                    if (!ReadFlag(pb, _pd, out errMsg))
                     {
-                        InsertLog($"Faile to read flage", LogMsg.Sources.PLC, 21300, pb.LastErrMsg);
-                        plcMode = PlcOpModes.Connecting;
-                        continue;
+                        InsertLog($"Faile to read flage", LogMsg.Sources.PLC, 21300, errMsg);
+                        if (_cs.GoToPlcConnectionDuringReady)
+                        {
+                            plcMode = PlcOpModes.Connecting;
+                            continue;
+                        }
+                        else
+                        {
+                            plcMode = PlcOpModes.Non;
+                            break;
+                        }
                     }
 
-                    if (_plcData.Flags.MeasReq == true && _tcpModeRef == TcpOpModes.Connected)
+                    if ((_pd.MeasReqBit.Event == _cs.PlcSettings.FlagEventType || _manualMeasTrigger) && _tcpModeRef == TcpOpModes.Connected)
                     {
-                        string errMsg;
+                        if (_manualMeasTrigger)
+                        {
+                            _manualMeasTrigger = false;
+                        }
                         // 마지막 DB ID를 읽어온다
                         if (!ReadLastIdFromDb(_cs, out lastDbId, out errMsg))
                         {
@@ -147,18 +173,9 @@ namespace PlcComDlg
                             continue;
                         }
                         _lastDbId = lastDbId;
-                        // 모델넘버 읽기
-                        if (!pb.ReadWord(_cs.PlcAddModelNumber, out short modelNum))
-                        {
-                            InsertLog($"Faile to read a model number", LogMsg.Sources.PLC, 21300, pb.LastErrMsg);
-                            plcMode = PlcOpModes.Connecting;
-                            continue;
-                        }
-                        _plcData.PlcModelNumber = modelNum;
-                        _plcGuiUpdateQue.Enqueue(PlcGuiEvents.ReadModelNumber);
 
                         // 제품정보 읽기
-                        if (!ReadProductInfor(pb, _cs, ref _plcData, out errMsg))
+                        if (!PlcData.ReadProdInfor(pb, _cs.ProductInfors, _pd, out errMsg))
                         {
                             InsertLog($"Faile to read product information", LogMsg.Sources.PLC, 21300, errMsg);
                             plcMode = PlcOpModes.Connecting;
@@ -166,21 +183,30 @@ namespace PlcComDlg
                         }
                         _plcGuiUpdateQue.Enqueue(PlcGuiEvents.ReadProductInfor);
 
+                        if (_cs.ClearMesBeforeMeasurement)
+                        {
+                            if (!ClearMesData(_cs.DbMeas, _cs.DbSettings, pb, _pd, out errMsg))
+                            {
+                                InsertLog($"Fail to clear MES DATA", LogMsg.Sources.DB, 21400, errMsg);
+                                break;
+                            }
+                        }
+
                         // PLC flag 쓰기
-                        if (_cs.PlcCtrlAutoClearOkNG)
+                        if (_cs.PlcSettings.CtrlAutoClearOkNG)
                         {
-                            pb.WriteBit(_cs.PlcAddOkBit, false);
-                            pb.WriteBit(_cs.PlcAddNgBit, false);
+                            pb.WriteBit(_pd.OkBit.Address, false);
+                            pb.WriteBit(_pd.NgBit.Address, false);
                         }
-                        if (_cs.PlcCtrlAutoClearMeasFin)
+                        if (_cs.PlcSettings.CtrlAutoClearMeasFin)
                         {
-                            pb.WriteBit(_cs.PlcAddMeasFinBit, false);
+                            pb.WriteBit(_pd.MeasFinBit.Address, false);
                         }
-                        pb.WriteBit(_cs.PlcAddMeasReqRespBit, true);
-                        pb.WriteBit(_cs.PlcAddBusyBit, true);
+                        pb.WriteBit(_pd.MeasReqRespBit.Address, true);
+                        pb.WriteBit(_pd.BusyBit.Address, true);
 
                         // TCP 측정 시작
-                        _plcData.MeasStartTime = DateTime.Now;
+                        _pd.MeasStartTime = DateTime.Now;
                         _tcpToPlcMeasFin = false;
                         _plcToTcpMeasReq = true;
                         plcMode = PlcOpModes.Measruement;
@@ -192,30 +218,45 @@ namespace PlcComDlg
                         // TCP 연결 시 하트비트
                         if (_tcpModeRef == TcpOpModes.Connected)
                         {
-                            _plcData.Flags.HeartBeat = !_plcData.Flags.HeartBeat;
-                            pb.WriteBit(_cs.PlcAddHeartBeatBit, _plcData.Flags.HeartBeat);
+                            if (!pb.WriteBit(_pd.HeartBeat.Address, !_pd.HeartBeat.Bit))
+                            {
+                                InsertLog($"Heartbeat failure", LogMsg.Sources.PLC, 21300, pb.LastErrMsg);
+                                if (_cs.GoToPlcConnectionDuringReady)
+                                {
+                                    plcMode = PlcOpModes.Connecting;
+                                    continue;
+                                }
+                                else
+                                {
+                                    plcMode = PlcOpModes.Non;
+                                    break;
+                                }
+                            }
                         }
 
                         // 모니터 업무 처리
-                        if (!PlcMonitor(pb, _cs, ref _plcMsgQue, ref _plcData, out string errMsg))
+                        if (_plcMsgQue.TryDequeue(out ComPlcData.ComMsg msg))
                         {
-                            InsertLog("Fail to PLC monitor", LogMsg.Sources.PLC, 21300, errMsg);
+                            if (!PlcMonitor(pb, _cs, msg, _pd, out errMsg))
+                            {
+                                InsertLog("Plc monitor failure", LogMsg.Sources.PLC, 21300, errMsg);
+                                break;
+                            }
                         }
-                        Thread.Sleep(_cs.PlcUpdateInterval);
+                        Thread.Sleep(_cs.PlcSettings.UpdateInterval);
                     }
                 }
-                // 21400.Plc.Woker.제어-측정완료 대기               
+                // 21400.Plc.Woker.제어-측정완료 대기
                 else if (plcMode == PlcOpModes.Measruement)
                 {
                     // 플래그 읽기
-                    if (!ReadFlag(pb, _cs, ref _plcData.Flags))
+                    if (!ReadFlag(pb, _pd, out errMsg))
                     {
-                        InsertLog($"Fail to read flags", LogMsg.Sources.PLC, 21400);
-                        plcMode = PlcOpModes.Connecting;
-                        continue;
+                        InsertLog($"Fail to read flags", LogMsg.Sources.PLC, 21400, errMsg);
+                        break;
                     }
 
-                    TimeSpan ts = DateTime.Now - _plcData.MeasStartTime;
+                    TimeSpan ts = DateTime.Now - _pd.MeasStartTime;
                     // 측정 종료 이벤트 발생
                     if (_tcpToPlcMeasFin == true)
                     {
@@ -224,21 +265,16 @@ namespace PlcComDlg
                         if (!_tcpMeasErrFlag)
                         {
                             InsertLog("Measurement finished", LogMsg.Sources.PLC);
-                            string errMsg;
 
-                            if (!ReadLastItemFromDb(_cs, ref _plcData, out errMsg))
+                            if (!UploadMesData(_cs.DbMeas, _cs.DbSettings, pb, _pd, out errMsg))
                             {
-                                InsertLog($"Fail to read DB", LogMsg.Sources.DB, 21400, errMsg);
-                            }
-
-                            if (!WriteMesData(pb, _cs, _plcData, out errMsg))
-                            {
-                                InsertLog($"Fail to upload MES data", LogMsg.Sources.PLC, 21400, errMsg);
+                                InsertLog($"Fail to upload MES DATA", LogMsg.Sources.DB, 21400, errMsg);
+                                break;
                             }
 
                             // OK/NG/측정완료 플래그 설정
-                            tcpOk = _plcData.DbPass != 0;
-                            tcpNg = _plcData.DbPass == 0;
+                            tcpOk = _pd.DbPass != 0;
+                            tcpNg = _pd.DbPass == 0;
                             tcpAlarm = false;
                         }
                         // 측정 실패
@@ -251,53 +287,50 @@ namespace PlcComDlg
 
                         _plcGuiUpdateQue.Enqueue(PlcGuiEvents.MesUpload);
 
-                        if (_cs.PlcCtrlAutoClearMeasReqResp)
+                        if (_cs.PlcSettings.CtrlAutoClearMeasReqResp)
                         {
-                            pb.WriteBit(_cs.PlcAddMeasReqRespBit, false);
+                            pb.WriteBit(_pd.MeasReqRespBit.Address, false);
                         }
-                        pb.WriteBit(_cs.PlcAddAlarmBit, tcpAlarm);
-                        pb.WriteBit(_cs.PlcAddOkBit, tcpOk);
-                        pb.WriteBit(_cs.PlcAddNgBit, tcpNg);
-                        pb.WriteBit(_cs.PlcAddBusyBit, false);
-                        pb.WriteBit(_cs.PlcAddMeasFinBit, true);
+                        pb.WriteBit(_pd.AlarmBit.Address, tcpAlarm);
+                        pb.WriteBit(_pd.OkBit.Address, tcpOk);
+                        pb.WriteBit(_pd.NgBit.Address, tcpNg);
+                        pb.WriteBit(_pd.BusyBit.Address, false);
+                        pb.WriteBit(_pd.MeasFinBit.Address, true);
                         plcMode = PlcOpModes.Connected;
                     }
                     // 측정 타임아웃 - 프로그래밍 오류
-                    else if (ts.Seconds > _cs.PlcMeasFinWaitTimeOut)
+                    else if (ts.Seconds > _cs.PlcSettings.MeasFinWaitTimeOut)
                     {
-                        InsertLog($"Measurement timeout", LogMsg.Sources.PLC, 21400, $"{ts.Seconds:f3}/{_cs.PlcMeasFinWaitTimeOut:f3} sec");
-                        if (_cs.PlcCtrlAutoClearMeasReqResp)
+                        InsertLog($"Measurement timeout", LogMsg.Sources.PLC, 21400, $"{ts.Seconds:f3}/{_cs.PlcSettings.MeasFinWaitTimeOut:f3} sec");
+                        if (_cs.PlcSettings.CtrlAutoClearMeasReqResp)
                         {
-                            pb.WriteBit(_cs.PlcAddMeasReqRespBit, false);
+                            pb.WriteBit(_pd.MeasReqRespBit.Address, false);
                         }
-                        pb.WriteBit(_cs.PlcAddAlarmBit, true);
-                        pb.WriteBit(_cs.PlcAddOkBit, false);
-                        pb.WriteBit(_cs.PlcAddNgBit, false);
-                        pb.WriteBit(_cs.PlcAddBusyBit, false);
-                        pb.WriteBit(_cs.PlcAddMeasFinBit, true);
+                        pb.WriteBit(_pd.AlarmBit.Address, true);
+                        pb.WriteBit(_pd.OkBit.Address, false);
+                        pb.WriteBit(_pd.NgBit.Address, false);
+                        pb.WriteBit(_pd.BusyBit.Address, false);
+                        pb.WriteBit(_pd.MeasFinBit.Address, true);
                         plcMode = PlcOpModes.Connected;
                     }
                     // 측정 대기
                     else
                     {
-                        // 옵션: 측정 대기 시 하트비트 전송
-                        if (_cs.PlcCtrlHeartBeatDuringMeas)
+                        pb.WriteBit(_cs.PlcAddress.HeartBeat, !_pd.HeartBeat.Bit);
+                        if (_plcMsgQue.TryDequeue(out ComPlcData.ComMsg msg))
                         {
-                            _plcData.Flags.HeartBeat = !_plcData.Flags.HeartBeat;
-                            pb.WriteBit(_cs.PlcAddHeartBeatBit, _plcData.Flags.HeartBeat);
+                            if (!PlcMonitor(pb, _cs, msg, _pd, out errMsg))
+                            {
+                                InsertLog("Plc monitor failure", LogMsg.Sources.PLC, 21400, errMsg);
+                                break;
+                            }
                         }
-
-                        if (!PlcMonitor(pb, _cs, ref _plcMsgQue, ref _plcData, out string errMsg))
-                        {
-                            InsertLog("Fail to PLC monitor", LogMsg.Sources.PLC, 21400, errMsg);
-                        }
-                        Thread.Sleep(_cs.PlcUpdateInterval);
+                        Thread.Sleep(_cs.PlcSettings.UpdateInterval);
                     }
                 }
-                // 21500.Plc.Woker.제어-사용자 작업
-                else if (plcMode == PlcOpModes.WaitUserOperation)
+                else
                 {
-
+                    InsertLog($"정의되지 않은 PLC 모드", LogMsg.Sources.PLC, 21500, plcMode.ToString());
                 }
 
                 // GUI 업데이트
@@ -306,46 +339,11 @@ namespace PlcComDlg
 
             // 프로그램 종료
             pb.Close();
-            while (_plcMsgQue.Count > 0)
-            {
-                _plcMsgQue.TryDequeue(out PlcData.ComMsg dummyMsg);
-            }
             _plcModeRef = PlcOpModes.Non;
         }
         #endregion
 
         #region 22000.Plc.Woker.이벤트
-        /// <summary>
-        /// PLC 워커 시작
-        /// </summary>
-        private void StartPlcWorker()
-        {
-            // Worker 설정
-            _workerPlc = new BackgroundWorker();
-            _workerPlc.WorkerReportsProgress = true;
-            _workerPlc.WorkerSupportsCancellation = true;
-            _workerPlc.DoWork += new DoWorkEventHandler(Worker_PlcDoWork);
-            _workerPlc.ProgressChanged += new ProgressChangedEventHandler(Worker_PlcProgressChanged);
-            _workerPlc.RunWorkerCompleted += new RunWorkerCompletedEventHandler(Worker_PlcRunWorkerCompleted);
-
-            // GUI 업데이트
-            BtnPlcStart.Text = "PLC Stop";
-
-            LblPlcAddMeasReq.Text = $"{_cs.PlcAddMeasReqBit}";
-            LblPlcAddMeasReqResp.Text = $"{_cs.PlcAddMeasReqRespBit}";
-            LblPlcAddHeartBeat.Text = $"{_cs.PlcAddHeartBeatBit}";
-            LblPlcAddMeasFin.Text = $"{_cs.PlcAddMeasFinBit}";
-            LblPlcAddOk.Text = $"{_cs.PlcAddOkBit}";
-            LblPlcAddNg.Text = $"{_cs.PlcAddNgBit}";
-            LblPlcAddBusy.Text = $"{_cs.PlcAddBusyBit}";
-            LblPlcAddAlarm.Text = $"{_cs.PlcAddAlarmBit}";
-            LblModelAdd.Text = _cs.PlcAddModelNumber;
-            LblHeartBeatIntVal.Text = $"{_cs.PlcUpdateInterval} (ms)";
-            LblMeasTimeVal.Text = $"{0:f1}/{_cs.PlcMeasFinWaitTimeOut:f1} (sec)";
-
-            _workerPlc.RunWorkerAsync();
-        }
-
         /// <summary>
         /// 진행상황 업데이트
         /// </summary>
@@ -359,14 +357,15 @@ namespace PlcComDlg
 
             if (plcConnected)
             {
-                LblPlcAddMeasReq.BackColor = _plcData.Flags.MeasReq ? Color.Lime : DefaultBackColor;
-                LblPlcAddMeasReqResp.BackColor = _plcData.Flags.MeasReqResp ? Color.Lime : DefaultBackColor;
-                LblPlcAddMeasFin.BackColor = _plcData.Flags.MeasFin ? Color.Lime : DefaultBackColor;
-                LblPlcAddHeartBeat.BackColor = _plcData.Flags.HeartBeat ? Color.Lime : DefaultBackColor;
-                LblPlcAddOk.BackColor = _plcData.Flags.Ok ? Color.Lime : DefaultBackColor;
-                LblPlcAddNg.BackColor = _plcData.Flags.Ng ? Color.Lime : DefaultBackColor;
-                LblPlcAddBusy.BackColor = _plcData.Flags.Busy ? Color.Lime : DefaultBackColor;
-                LblPlcAddAlarm.BackColor = _plcData.Flags.Alarm ? Color.Lime : DefaultBackColor;
+                LblPlcAddMeasReq.BackColor = _pd.MeasReqBit.Bit ? Color.Lime : DefaultBackColor;
+                LblPlcAddMeasReqResp.BackColor = _pd.MeasReqRespBit.Bit ? Color.Lime : DefaultBackColor;
+                LblPlcAddMeasFin.BackColor = _pd.MeasFinBit.Bit ? Color.Lime : DefaultBackColor;
+                LblPlcAddHeartBeat.BackColor = _pd.HeartBeat.Bit ? Color.Lime : DefaultBackColor;
+                LblPlcAddOk.BackColor = _pd.OkBit.Bit ? Color.Lime : DefaultBackColor;
+                LblPlcAddNg.BackColor = _pd.NgBit.Bit ? Color.Lime : DefaultBackColor;
+                LblPlcAddBusy.BackColor = _pd.BusyBit.Bit ? Color.Lime : DefaultBackColor;
+                LblPlcAddAlarm.BackColor = _pd.AlarmBit.Bit ? Color.Lime : DefaultBackColor;
+                LblModelNumVal.Text = $"{_pd.Model.Number}";
             }
             else
             {
@@ -377,20 +376,20 @@ namespace PlcComDlg
             TimeSpan ts;
             if (_plcModeRef == PlcOpModes.Connecting)
             {
-                LblPlcCon.Text = "Connecting";
+                LblPlcCon.Text = "Connecting to PLC";
                 LblPlcCon.BackColor = Color.OrangeRed;
             }
             else if (_plcModeRef == PlcOpModes.Connected)
             {
-                LblPlcCon.Text = "Ready";
+                LblPlcCon.Text = "PLC Ready";
                 LblPlcCon.BackColor = Color.Lime;
             }
             else if (_plcModeRef == PlcOpModes.Measruement)
             {
                 LblPlcCon.Text = "Measurement";
                 LblPlcCon.BackColor = Color.Orange;
-                ts = DateTime.Now - _plcData.MeasStartTime;
-                LblMeasTimeVal.Text = $"{ts.TotalSeconds:f1}/{_cs.PlcMeasFinWaitTimeOut:f1} (sec)";
+                ts = DateTime.Now - _pd.MeasStartTime;
+                LblMeasTimeVal.Text = $"{ts.TotalSeconds:f1}/{_cs.PlcSettings.MeasFinWaitTimeOut:f1} (sec)";
             }
         }
 
@@ -414,6 +413,41 @@ namespace PlcComDlg
 
         #region 23000.Plc.Woker.메소드
         /// <summary>
+        /// PLC 워커 시작
+        /// </summary>
+        private void StartPlcWorker()
+        {
+            _plcMsgQue = new ConcurrentQueue<ComPlcData.ComMsg>();
+
+            // Worker 설정
+            _workerPlc = new BackgroundWorker
+            {
+                WorkerReportsProgress = true,
+                WorkerSupportsCancellation = true
+            };
+            _workerPlc.DoWork += new DoWorkEventHandler(Worker_PlcDoWork);
+            _workerPlc.ProgressChanged += new ProgressChangedEventHandler(Worker_PlcProgressChanged);
+            _workerPlc.RunWorkerCompleted += new RunWorkerCompletedEventHandler(Worker_PlcRunWorkerCompleted);
+
+            // GUI 업데이트
+            BtnPlcStart.Text = "PLC Stop";
+
+            LblPlcAddMeasReq.Text = _pd.MeasReqBit.Address = _cs.PlcAddress.MeasRequest;
+            LblPlcAddMeasReqResp.Text = _pd.MeasReqRespBit.Address = _cs.PlcAddress.MeasReqRespBit;
+            LblPlcAddHeartBeat.Text = _pd.HeartBeat.Address = _cs.PlcAddress.HeartBeat;
+            LblPlcAddMeasFin.Text = _pd.MeasFinBit.Address = _cs.PlcAddress.MeasFinBit;
+            LblPlcAddOk.Text = _pd.OkBit.Address = _cs.PlcAddress.OkBit;
+            LblPlcAddNg.Text = _pd.NgBit.Address = _cs.PlcAddress.NgBit;
+            LblPlcAddBusy.Text = _pd.BusyBit.Address = _cs.PlcAddress.BusyBit;
+            LblPlcAddAlarm.Text = _pd.AlarmBit.Address = _cs.PlcAddress.AlarmBit;
+            LblModelNumberAdd.Text = _pd.Model.Address = _cs.PlcAddModelNumber;
+            LblHeartBeatIntVal.Text = $"{_cs.PlcSettings.UpdateInterval} (ms)";
+            LblMeasTimeVal.Text = $"{0:f1}/{_cs.PlcSettings.MeasFinWaitTimeOut:f1} (sec)";
+
+            _workerPlc.RunWorkerAsync();
+        }
+
+        /// <summary>
         /// PLC 모니터 함수
         /// </summary>
         /// <param name="pb"></param>
@@ -422,365 +456,263 @@ namespace PlcComDlg
         /// <param name="pd"></param>
         /// <param name="errMsg"></param>
         /// <returns></returns>
-        private bool PlcMonitor(PlcBase pb, ComSettings cs, ref ConcurrentQueue<PlcData.ComMsg> pq, ref PlcData pd, out string errMsg)
+        private bool PlcMonitor(PlcBase pb, ComSettings cs, ComPlcData.ComMsg msg, ComPlcData pd, out string errMsg)
         {
-            errMsg = "";
-            if (pq.TryDequeue(out PlcData.ComMsg msg))
+            if (msg.MsgType == ComPlcData.ComMsg.MsgTypes.GetProductInfor)
             {
-                if (msg.MsgType == PlcData.ComMsg.MsgTypes.GetModelNumber)
+                if (PlcData.ReadProdInfor(pb, cs.ProductInfors, pd, out errMsg))
                 {
-                    if (!pb.ReadWord(cs.PlcAddModelNumber, out short modelNum))
-                    {
-                        errMsg = $"모델 넘버 읽기 실패: {pb.LastErrMsg}";
-                        return false;
-                    }
-                    pd.PlcModelNumber = modelNum;
-                    _plcGuiUpdateQue.Enqueue(PlcGuiEvents.ReadModelNumber);
-                    InsertLog(PlcData.ComMsg.MsgTypes.GetModelNumber.ToString(), LogMsg.Sources.PLC);
-                }
-                else if (msg.MsgType == PlcData.ComMsg.MsgTypes.GetProductInfor)
-                {
-                    if (!ReadProductInfor(pb, cs, ref pd, out string errMsg1))
-                    {
-                        errMsg = errMsg1;
-                        return false;
-                    }
+                    InsertLog("Read product information", LogMsg.Sources.PLC);
                     _plcGuiUpdateQue.Enqueue(PlcGuiEvents.ReadProductInfor);
-                    InsertLog(PlcData.ComMsg.MsgTypes.GetProductInfor.ToString(), LogMsg.Sources.PLC);
-                }
-                else if (msg.MsgType == PlcData.ComMsg.MsgTypes.UploadMesData)
-                {
-                    string errMsg1;
-                    if (!ReadLastItemFromDb(cs, ref pd, out errMsg1))
-                    {
-                        errMsg = $"DB 정보 읽기 실패: {errMsg1}";
-                        return false;
-                    }
-                    InsertLog("READ DB", LogMsg.Sources.DB);
-
-                    if (!WriteMesData(pb, cs, pd, out errMsg1))
-                    {
-                        errMsg = $"MES 업로드 실패: {errMsg1}";
-                        return false;
-                    }
-                    _plcGuiUpdateQue.Enqueue(PlcGuiEvents.MesUpload);
-                    InsertLog(PlcData.ComMsg.MsgTypes.UploadMesData.ToString(), LogMsg.Sources.PLC);
-                }
-                else if (msg.MsgType == PlcData.ComMsg.MsgTypes.ToggleMeasReq)
-                {
-                    pb.WriteBit(cs.PlcAddMeasReqBit, !pd.Flags.MeasReq);
-                }
-                else if (msg.MsgType == PlcData.ComMsg.MsgTypes.ToggleMeasReqResp)
-                {
-                    pb.WriteBit(cs.PlcAddMeasReqRespBit, !pd.Flags.MeasReqResp);
-                }
-                else if (msg.MsgType == PlcData.ComMsg.MsgTypes.ToggleMeasFin)
-                {
-                    pb.WriteBit(cs.PlcAddMeasFinBit, !pd.Flags.MeasFin);
-                }
-                else if (msg.MsgType == PlcData.ComMsg.MsgTypes.ToggleOk)
-                {
-                    pb.WriteBit(cs.PlcAddOkBit, !pd.Flags.Ok);
-                }
-                else if (msg.MsgType == PlcData.ComMsg.MsgTypes.ToggleNg)
-                {
-                    pb.WriteBit(cs.PlcAddNgBit, !pd.Flags.Ng);
-                }
-                else if (msg.MsgType == PlcData.ComMsg.MsgTypes.ToggleBusy)
-                {
-                    pb.WriteBit(cs.PlcAddBusyBit, !pd.Flags.Busy);
-                }
-                else if (msg.MsgType == PlcData.ComMsg.MsgTypes.ToggleAlarm)
-                {
-                    pb.WriteBit(cs.PlcAddAlarmBit, !pd.Flags.Alarm);
+                    return true;
                 }
                 else
                 {
-                    throw new NotImplementedException();
+                    InsertLog("Fail to read product information", LogMsg.Sources.PLC, 21300, errMsg);
+                    return false;
                 }
             }
-            return true;
+            else if (msg.MsgType == ComPlcData.ComMsg.MsgTypes.UploadMesData)
+            {
+                if (UploadMesData(cs.DbMeas, cs.DbSettings, pb, pd, out errMsg))
+                {
+                    InsertLog("Upload MES data", LogMsg.Sources.PLC);
+                    _plcGuiUpdateQue.Enqueue(PlcGuiEvents.MesUpload);
+                    return true;
+                }
+                else
+                {
+                    InsertLog("Fail to upload MES data", LogMsg.Sources.PLC, 21300, errMsg);
+                    return false;
+                }
+            }
+            else if (msg.MsgType == ComPlcData.ComMsg.MsgTypes.ClearMesData)
+            {
+                if (ClearMesData(cs.DbMeas, cs.DbSettings, pb, pd, out errMsg))
+                {
+                    InsertLog("Clear MES data", LogMsg.Sources.PLC);
+                    _plcGuiUpdateQue.Enqueue(PlcGuiEvents.MesClear);
+                    return true;
+                }
+                else
+                {
+                    InsertLog("Fail to clear MES data", LogMsg.Sources.PLC, 21300, errMsg);
+                    return false;
+                }
+            }
+            else if (msg.MsgType == ComPlcData.ComMsg.MsgTypes.ToggleMeasReq)
+            {
+                if (pb.WriteBit(pd.MeasReqBit.Address, !pd.MeasReqBit.Bit))
+                {
+                    InsertLog("Toggle MeasReq bit", LogMsg.Sources.PLC);
+                    errMsg = "";
+                    return true;
+                }
+                else
+                {
+                    InsertLog("Fail to toggle MeasReq bit", LogMsg.Sources.PLC, 21300, pb.LastErrMsg);
+                    errMsg = pb.LastErrMsg;
+                    return false;
+                }
+            }
+            else if (msg.MsgType == ComPlcData.ComMsg.MsgTypes.ToggleMeasReqResp)
+            {
+                if (pb.WriteBit(pd.MeasReqRespBit.Address, !pd.MeasReqRespBit.Bit))
+                {
+                    InsertLog("Toggle MeasReqResp bit", LogMsg.Sources.PLC);
+                    errMsg = "";
+                    return true;
+                }
+                else
+                {
+                    InsertLog("Fail to toggle MeasReqResp bit", LogMsg.Sources.PLC, 21300, pb.LastErrMsg);
+                    errMsg = pb.LastErrMsg;
+                    return false;
+                }
+            }
+            else if (msg.MsgType == ComPlcData.ComMsg.MsgTypes.ToggleMeasFin)
+            {
+                if (pb.WriteBit(pd.MeasFinBit.Address, !pd.MeasFinBit.Bit))
+                {
+                    InsertLog("Toggle MeasFin bit", LogMsg.Sources.PLC);
+                    errMsg = "";
+                    return true;
+                }
+                else
+                {
+                    InsertLog("Fail to toggle MeasFin bit", LogMsg.Sources.PLC, 21300, pb.LastErrMsg);
+                    errMsg = pb.LastErrMsg;
+                    return false;
+                }
+            }
+            else if (msg.MsgType == ComPlcData.ComMsg.MsgTypes.ToggleOk)
+            {
+                if (pb.WriteBit(pd.OkBit.Address, !pd.OkBit.Bit))
+                {
+                    InsertLog("Toggle Ok bit", LogMsg.Sources.PLC);
+                    errMsg = "";
+                    return true;
+                }
+                else
+                {
+                    InsertLog("Fail to toggle Ok bit", LogMsg.Sources.PLC, 21300, pb.LastErrMsg);
+                    errMsg = pb.LastErrMsg;
+                    return false;
+                }
+            }
+            else if (msg.MsgType == ComPlcData.ComMsg.MsgTypes.ToggleNg)
+            {
+                if (pb.WriteBit(pd.NgBit.Address, !pd.NgBit.Bit))
+                {
+                    InsertLog("Toggle Ng bit", LogMsg.Sources.PLC);
+                    errMsg = "";
+                    return true;
+                }
+                else
+                {
+                    InsertLog("Fail to toggle Ng bit", LogMsg.Sources.PLC, 21300, pb.LastErrMsg);
+                    errMsg = pb.LastErrMsg;
+                    return false;
+                }
+            }
+            else if (msg.MsgType == ComPlcData.ComMsg.MsgTypes.ToggleBusy)
+            {
+                if (pb.WriteBit(pd.BusyBit.Address, !pd.BusyBit.Bit))
+                {
+                    InsertLog("Toggle Busy bit", LogMsg.Sources.PLC);
+                    errMsg = "";
+                    return true;
+                }
+                else
+                {
+                    InsertLog("Fail to toggle Busy Ng bit", LogMsg.Sources.PLC, 21300, pb.LastErrMsg);
+                    errMsg = pb.LastErrMsg;
+                    return false;
+                }
+            }
+            else if (msg.MsgType == ComPlcData.ComMsg.MsgTypes.ToggleAlarm)
+            {
+                if (pb.WriteBit(pd.AlarmBit.Address, !pd.AlarmBit.Bit))
+                {
+                    InsertLog("Toggle Alarm bit", LogMsg.Sources.PLC);
+                    errMsg = "";
+                    return true;
+                }
+                else
+                {
+                    InsertLog("Fail to toggle Alarm Ng bit", LogMsg.Sources.PLC, 21300, pb.LastErrMsg);
+                    errMsg = pb.LastErrMsg;
+                    return false;
+                }
+            }
+            else
+            {
+                errMsg = "정의되지 않은 PLC 메시지";
+                return false;
+            }
         }
 
         /// <summary>
         /// Flag를 읽어온다
         /// </summary>
         /// <param name="pb"></param>
-        /// <param name="cs"></param>
         /// <param name="flags"></param>
         /// <returns></returns>
-        private static bool ReadFlag(PlcBase pb, ComSettings cs, ref PlcData.CtrlFlags cf)
+        private static bool ReadFlag(PlcBase pb, ComPlcData pd, out string errMsg)
         {
-            bool bit;
-
-            if (!pb.ReadBit(cs.PlcAddMeasReqBit, out bit))
+            if (pb.ReadBit(pd.HeartBeat.Address, out bool heartBeat))
             {
-                return false;
+                pd.HeartBeat.SetBit(heartBeat);
             }
-            cf.MeasReq = bit;
-
-            if (!pb.ReadBit(cs.PlcAddMeasReqRespBit, out bit))
+            else
             {
-                return false;
-            }
-            cf.MeasReqResp = bit;
-            if (!pb.ReadBit(cs.PlcAddHeartBeatBit, out bit))
-            {
-                return false;
-            }
-            cf.HeartBeat = bit;
-            if (!pb.ReadBit(cs.PlcAddOkBit, out bit))
-            {
-                return false;
-            }
-            cf.Ok = bit;
-            if (!pb.ReadBit(cs.PlcAddNgBit, out bit))
-            {
-                return false;
-            }
-            cf.Ng = bit;
-            if (!pb.ReadBit(cs.PlcAddBusyBit, out bit))
-            {
-                return false;
-            }
-            cf.Busy = bit;
-            if (!pb.ReadBit(cs.PlcAddMeasFinBit, out bit))
-            {
-                return false;
-            }
-            cf.MeasFin = bit;
-            if (!pb.ReadBit(cs.PlcAddAlarmBit, out bit))
-            {
-                return false;
-            }
-            cf.Alarm = bit;
-
-            return true;
-        }
-
-        /// <summary>
-        /// Flag를 PLC에 작성한다
-        /// </summary>
-        /// <param name="pb"></param>
-        /// <param name="cs"></param>
-        /// <param name="flags"></param>
-        /// <returns></returns>
-        private static bool WriteFlag(PlcBase pb, ComSettings cs, PlcData.CtrlFlags cf)
-        {
-            if (!pb.WriteBit(cs.PlcAddMeasReqBit, cf.MeasReq))
-            {
+                errMsg = $"하트비트 비트 읽기 실패={pd.MeasReqBit.Address}, {pb.LastErrMsg}";
                 return false;
             }
 
-            if (!pb.WriteBit(cs.PlcAddMeasReqRespBit, cf.MeasReqResp))
+            if (pb.ReadBit(pd.MeasReqBit.Address, out bool measReq))
             {
+                pd.MeasReqBit.SetBit(measReq);
+            }
+            else
+            {
+                errMsg = $"측정요청 비트 읽기 실패={pd.MeasReqBit.Address}, {pb.LastErrMsg}";
                 return false;
             }
-            if (!pb.WriteBit(cs.PlcAddHeartBeatBit, cf.HeartBeat))
-            {
-                return false;
-            }
-            if (!pb.WriteBit(cs.PlcAddOkBit, cf.Ok))
-            {
-                return false;
-            }
-            if (!pb.WriteBit(cs.PlcAddNgBit, cf.Ng))
-            {
-                return false;
-            }
-            if (!pb.WriteBit(cs.PlcAddBusyBit, cf.Busy))
-            {
-                return false;
-            }
-            if (!pb.WriteBit(cs.PlcAddMeasFinBit, cf.MeasFin))
-            {
-                return false;
-            }
-            if (!pb.WriteBit(cs.PlcAddAlarmBit, cf.Alarm))
-            {
-                return false;
-            }
-            
-            return true;
-        }
 
-        /// <summary>
-        /// product 정보를 읽어온다
-        /// </summary>
-        /// <param name="pb"></param>
-        /// <param name="cs"></param>
-        /// <param name="pis"></param>
-        /// <param name="plcData"></param>
-        /// <returns></returns>
-        public static bool ReadProductInfor(PlcBase pb, ComSettings cs,  ref PlcData plcData, out string errMsg)
-        {
+            if (pb.ReadBit(pd.MeasFinBit.Address, out bool measFin))
+            {
+                pd.MeasFinBit.SetBit(measFin);
+            }
+            else
+            {
+                errMsg = $"측정완료 비트 읽기 실패={pd.MeasFinBit.Address}, {pb.LastErrMsg}";
+                return false;
+            }
+
+            if (pb.ReadBit(pd.OkBit.Address, out bool ok))
+            {
+                pd.OkBit.SetBit(ok);
+            }
+            else
+            {
+                errMsg = $"OK 비트 읽기 실패={pd.OkBit.Address}, {pb.LastErrMsg}";
+                return false;
+            }
+
+            if (pb.ReadBit(pd.NgBit.Address, out bool ng))
+            {
+                pd.NgBit.SetBit(ng);
+            }
+            else
+            {
+                errMsg = $"NG 비트 읽기 실패={pd.NgBit.Address}, {pb.LastErrMsg}";
+                return false;
+            }
+
+            if (pb.ReadBit(pd.AlarmBit.Address, out bool alarm))
+            {
+                pd.AlarmBit.SetBit(alarm);
+            }
+            else
+            {
+                errMsg = $"알람 비트 읽기 실패={pd.AlarmBit.Address}, {pb.LastErrMsg}";
+                return false;
+            }
+
+            if (pb.ReadBit(pd.MeasReqRespBit.Address, out bool measReqResp))
+            {
+                pd.MeasReqRespBit.SetBit(measReqResp);
+            }
+            else
+            {
+                errMsg = $"측정요청응답 비트 읽기 실패={pd.MeasReqRespBit.Address}, {pb.LastErrMsg}";
+                return false;
+            }
+
+            if (pb.ReadBit(pd.BusyBit.Address, out bool busy))
+            {
+                pd.BusyBit.SetBit(busy);
+            }
+            else
+            {
+                errMsg = $"BUSY 비트 읽기 실패={pd.BusyBit.Address}, {pb.LastErrMsg}";
+                return false;
+            }
+
+            if (pb.ReadWord(pd.Model.Address, out short mn))
+            {
+                pd.Model.Number = mn;
+            }
+            else
+            {
+                errMsg = $"MODEL 넘버 읽기 실패={pd.Model.Address}, {pb.LastErrMsg}";
+                return false;
+            }
             errMsg = "";
-            plcData.ProductInforVals.Clear();
-            for (int i = 0; i < cs.ProductInfors.Count; i++)
-            {
-                // 문자 읽기
-                if (cs.ProductInfors[i].DataType == ComSettings.ProductInfor.DataTypes.Text)
-                {
-                    if (!pb.ReadBytes(cs.ProductInfors[i].DataStartAddress, cs.ProductInfors[i].DataLength, out byte[] data))
-                    {
-                        errMsg = pb.LastErrMsg;
-                        return false;
-                    }
-
-                    string msg = Encoding.Default.GetString(data) + Environment.NewLine;
-                    plcData.ProductInforVals.Add(msg);
-                }
-                // 정수 값 읽기
-                else if (cs.ProductInfors[i].DataType == ComSettings.ProductInfor.DataTypes.Word)
-                {
-                    if (!pb.ReadWord(cs.ProductInfors[i].DataStartAddress, out short data))
-                    {
-                        errMsg = pb.LastErrMsg;
-                        return false;
-                    }
-                    plcData.ProductInforVals.Add(data);
-                }
-                else if (cs.ProductInfors[i].DataType == ComSettings.ProductInfor.DataTypes.DWord)
-                {
-                    if (!pb.ReadDWord(cs.ProductInfors[i].DataStartAddress, out int data))
-                    {
-                        errMsg = pb.LastErrMsg;
-                        return false;
-                    }
-                    plcData.ProductInforVals.Add(data);
-                }
-                // 코딩 에러
-                else
-                {
-                    errMsg = "Undefined product data type";
-                    return false;
-                }
-            }
             return true;
         }
         
-        /// <summary>
-        /// DB에서 마지막 아이템을 읽어온다
-        /// </summary>
-        /// <param name="cs"></param>
-        /// <param name="pd"></param>
-        /// <param name="errMsg"></param>
-        /// <returns></returns>
-        private static bool ReadLastItemFromDb(ComSettings cs, ref PlcData pd, out string errMsg)
-        {
-            string strConn;
-
-            // 측정 아이템 정보를 읽어온다
-            try
-            {
-                var lsMeas = cs.DbMeas.MeasCols.FindAll(x => x.Enable);
-                strConn = $@"Data Source={cs.DbMeas.Path};Read Only=True;";
-                using (SQLiteConnection conn = new SQLiteConnection(strConn))
-                {
-                    conn.Open();
-                    SQLiteCommand cmd;
-
-                    cmd = new SQLiteCommand(@"select MAX(Id) from sma_measurement", conn);
-                    pd.DbId = (long)cmd.ExecuteScalar();
-
-                    string sql = $"SELECT * FROM sma_measurement WHERE Id = {pd.DbId}";
-                    cmd = new SQLiteCommand(sql, conn);
-                    SQLiteDataReader rdr = cmd.ExecuteReader();
-                    var columns = Enumerable.Range(0, rdr.FieldCount).Select(rdr.GetName).ToList();
-
-
-                    // Column 존재여부 검증
-                    for (int i = 0; i < lsMeas.Count; i++)
-                    {
-                        string colName = lsMeas[i].Name;
-                        if (columns.Find(n => n == colName) == null)
-                        {
-                            throw new Exception($"DB 테이블에 {colName} 필드가 존재하지 않습니다");
-                        }
-                    }
-
-                    while (rdr.Read())
-                    {
-                        pd.DbPass = Convert.ToInt64(rdr["pass"]);
-                        pd.DbFailedId = Convert.ToInt64(rdr["failed_id"]);
-                        pd.DbMesVals.Clear();
-
-                        for (int i = 0; i < lsMeas.Count; i++)
-                        {
-                            PlcData.MesDatum md = new PlcData.MesDatum();
-                            md.Name = lsMeas[i].Name;
-                            if (DBNull.Value != rdr[md.Name])
-                            {
-                                md.MeasValue = Convert.ToDouble(rdr[md.Name]);
-                            }
-                            else
-                            {
-                                md.MeasValue = 0;
-                            }
-                            md.MesValue = (long)(md.MeasValue * lsMeas[i].Scale);
-                            md.Address = lsMeas[i].Address;
-                            pd.DbMesVals.Add(md);
-                        }
-                        break;
-                    }
-                    rdr.Close();
-                }
-                errMsg = "";
-            }
-            catch (Exception ex)
-            {
-                errMsg = $"PLC: DB 데이터 로드 오류로 인한 중단: {ex.Message}";
-                return false;
-            }
-
-            // 설정 DB로 부터 업로드 아이템을 읽어온다.
-            try
-            {
-                var lsSettings = cs.DbSettings.CondItems.FindAll(x => x.Enable);
-                strConn = $@"Data Source={cs.DbSettings.Path};Read Only=True;";
-                using (SQLiteConnection conn = new SQLiteConnection(strConn))
-                {
-                    conn.Open();
-                    SQLiteCommand cmd;
-
-                    for (int i = 0; i < lsSettings.Count; i++)
-                    {
-                        if (pd.PlcModelNumber != lsSettings[i].ModelNumber)
-                        {
-                            continue;
-                        }
-
-                        string sql = $"SELECT * FROM sma_conditions WHERE Id = {lsSettings[i].Id} AND sample_id = {lsSettings[i].ModelNumber}";
-
-                        cmd = new SQLiteCommand(sql, conn);
-                        SQLiteDataReader rdr = cmd.ExecuteReader();
-                        while (rdr.Read())
-                        {
-                            PlcData.MesDatum md = new PlcData.MesDatum();
-                            md.Name = $"{lsSettings[i].Name} ({lsSettings[i].ModelNumber}.{lsSettings[i].Id})";
-                            bool res = lsSettings[i].ParseParam(rdr["parameters"].ToString(), out double paramVal, out errMsg);
-                            if (!res)
-                            {
-                                throw new Exception($"{errMsg}");
-                            }
-                            md.MeasValue = paramVal;
-                            md.MesValue = (long)(md.MeasValue * lsSettings[i].Scale);
-                            md.Address = lsSettings[i].Address;
-                            pd.DbMesVals.Add(md);
-                        }
-                        rdr.Close();
-                    }
-                }
-                errMsg = "";
-                return true;
-            }
-            catch (Exception ex)
-            {
-                errMsg = $"PLC: DB 데이터 로드 오류로 인한 중단: {ex.Message}";
-                return false;
-            }
-        }
-
         /// <summary>
         /// DB에서 마지막 ID를 읽어온다
         /// </summary>
@@ -815,33 +747,193 @@ namespace PlcComDlg
         /// <summary>
         /// MES 데이터 업로드
         /// </summary>
+        /// <param name="di"></param>
+        /// <param name="si"></param>
         /// <param name="pb"></param>
-        /// <param name="cs"></param>
-        /// <param name="plcData"></param>
+        /// <param name="pd"></param>
         /// <param name="errMsg"></param>
         /// <returns></returns>
-        public static bool WriteMesData(PlcBase pb, ComSettings cs, PlcData plcData, out string errMsg)
+        private static bool UploadMesData(ComSettings.DbInforMeas di, ComSettings.DbInforSettings si, PlcBase pb, ComPlcData pd, out string errMsg)
         {
-            errMsg = "";
+            string strConn;
+            pd.MesData.Rows.Clear();
+
+            // 측정 아이템 정보를 읽어온다
+            strConn = $@"Data Source={di.Path};Read Only=True;";
             try
             {
-                // MES Data 업로드
-                for (int i = 0; i < plcData.DbMesVals.Count; i++)
+                using (SQLiteConnection conn = new SQLiteConnection(strConn))
                 {
-                    if (!pb.WriteDWords(plcData.DbMesVals[i].Address, new int[] { (int)plcData.DbMesVals[i].MesValue }))
+                    conn.Open();
+                    SQLiteCommand cmd;
+
+                    cmd = new SQLiteCommand(@"select MAX(Id) from sma_measurement", conn);
+                    pd.DbId = (long)cmd.ExecuteScalar();
+
+                    string sql = $"SELECT * FROM sma_measurement WHERE Id = {pd.DbId}";
+                    cmd = new SQLiteCommand(sql, conn);
+                    SQLiteDataReader rdr = cmd.ExecuteReader();
+                    var columns = Enumerable.Range(0, rdr.FieldCount).Select(rdr.GetName).ToList();
+
+                    // Column 존재여부 검증
+                    foreach (var d in di.MeasCols.Where(x => x.Enable))
+                    {
+                        if (columns.Find(n => n == d.DataName) == null)
+                        {
+                            throw new Exception($"DB 테이블에 {d.DataName} 필드가 존재하지 않습니다");
+                        }
+                    }
+
+                    while (rdr.Read())
+                    {
+                        pd.DbPass = Convert.ToInt64(rdr["pass"]);
+                        pd.DbFailedId = Convert.ToInt64(rdr["failed_id"]);
+                        foreach (var d in di.MeasCols.Where(x => x.Enable))
+                        {
+                            double rdata;
+                            if (DBNull.Value != rdr[d.DataName])
+                            {
+                                rdata = Convert.ToDouble(rdr[d.DataName]);
+                            }
+                            else
+                            {
+                                rdata = 0;
+                            }
+                            pd.MesData.Rows.Add(d.Name, d.DataName, rdata, rdata * d.Scale, d.Address, d.DataType);
+                        }
+                        break;
+                    }
+                    rdr.Close();
+                }
+                errMsg = "";
+            }
+            catch (Exception ex)
+            {
+                errMsg = ex.Message;
+                return false;
+            }
+
+            // 설정 DB로 부터 업로드 아이템을 읽어온다.
+            strConn = $@"Data Source={si.Path};Read Only=True;";
+            try
+            {
+                using (SQLiteConnection conn = new SQLiteConnection(strConn))
+                {
+                    conn.Open();
+                    SQLiteCommand cmd;
+
+                    foreach (var s in si.CondItems.FindAll(x =>x.Enable))
+                    {
+                        if (pd.Model.Number != s.ModelNumber)
+                        {
+                            continue;
+                        }
+                        string sql = $"SELECT * FROM sma_conditions WHERE Id = {s.Id} AND sample_id = {s.ModelNumber}";
+
+                        cmd = new SQLiteCommand(sql, conn);
+                        SQLiteDataReader rdr = cmd.ExecuteReader();
+                        while (rdr.Read())
+                        {
+                            if (!s.ParseParam(rdr["parameters"].ToString(), out double paramVal, out errMsg))
+                            {
+                                throw new Exception($"{errMsg}");
+                            }
+                            pd.MesData.Rows.Add($"{s.Name} ({s.ModelNumber}.{s.Id})", s.DataName, paramVal, paramVal * s.Scale, s.Address, s.DataType);
+                        }
+                        rdr.Close();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                errMsg = ex.Message;
+                return false;
+            }
+
+            // MES Data 업로드
+            foreach (DataRow r in pd.MesData.Rows)
+            {
+                PlcMesInfors.MesDataTypes t = (PlcMesInfors.MesDataTypes)Convert.ToInt32(r["dataType"]);
+                if (t == PlcMesInfors.MesDataTypes.Word)
+                {
+                    if (!pb.WriteWord(r["address"].ToString(), Convert.ToInt16(r["mesData"])))
                     {
                         errMsg = pb.LastErrMsg;
                         return false;
                     }
                 }
+                else if (t == PlcMesInfors.MesDataTypes.DWord)
+                {
+                    if (!pb.WriteDWord(r["address"].ToString(), Convert.ToInt32(r["mesData"])))
+                    {
+                        errMsg = pb.LastErrMsg;
+                        return false;
+                    }
+                }
+                else
+                {
+                    errMsg = $"지원하지 않는 데이터 타입: {t.ToString()}";
+                    return false;
+                }
+            }
+            errMsg = "";
+            return true;
+        }
 
-                return true;
-            }
-            catch (Exception e)
+        /// <summary>
+        /// MES 데이터 업로드
+        /// </summary>
+        /// <param name="di"></param>
+        /// <param name="si"></param>
+        /// <param name="pb"></param>
+        /// <param name="pd"></param>
+        /// <param name="errMsg"></param>
+        /// <returns></returns>
+        private static bool ClearMesData(ComSettings.DbInforMeas di, ComSettings.DbInforSettings si, PlcBase pb, ComPlcData pd, out string errMsg)
+        {
+            pd.MesData.Rows.Clear();
+            foreach (var d in di.MeasCols.Where(x => x.Enable))
             {
-                errMsg = e.Message;
-                return false;
+                pd.MesData.Rows.Add(d.Name, d.DataName, 0, 0, d.Address, d.DataType);
             }
+
+            foreach (var s in si.CondItems.FindAll(x => x.Enable))
+            {
+                if (pd.Model.Number != s.ModelNumber)
+                {
+                    continue;
+                }
+                pd.MesData.Rows.Add($"{s.Name} ({s.ModelNumber}.{s.Id})", s.DataName, 0, 0, s.Address, s.DataType);
+            }
+
+            // MES Data 업로드
+            foreach (DataRow r in pd.MesData.Rows)
+            {
+                PlcMesInfors.MesDataTypes t = (PlcMesInfors.MesDataTypes)Convert.ToInt32(r["dataType"]);
+                if (t == PlcMesInfors.MesDataTypes.Word)
+                {
+                    if (!pb.WriteWord(r["address"].ToString(), Convert.ToInt16(r["mesData"])))
+                    {
+                        errMsg = pb.LastErrMsg;
+                        return false;
+                    }
+                }
+                else if (t == PlcMesInfors.MesDataTypes.DWord)
+                {
+                    if (!pb.WriteDWord(r["address"].ToString(), Convert.ToInt32(r["mesData"])))
+                    {
+                        errMsg = pb.LastErrMsg;
+                        return false;
+                    }
+                }
+                else
+                {
+                    errMsg = $"지원하지 않는 데이터 타입: {t.ToString()}";
+                    return false;
+                }
+            }
+            errMsg = "";
+            return true;
         }
         #endregion
     }

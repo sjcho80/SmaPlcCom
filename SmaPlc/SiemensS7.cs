@@ -77,7 +77,7 @@ namespace SmaPlc
 
             if (!IPAddress.TryParse(strs[1], out IPAddress ip))
             {
-                _errMsg = $"Cannot try parse CPU type: {strs[0]}";
+                _errMsg = $"Cannot try parse IP Address: {strs[0]}";
                 return false;
             }
             cp.Ip = ip;
